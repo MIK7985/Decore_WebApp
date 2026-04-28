@@ -25,7 +25,7 @@ class EmployeeForm(forms.ModelForm):
         widgets = {
             'name': forms.TextInput(attrs={'class':'form-control','placeholder':'Full Name'}),
             'profile_pic': forms.FileInput(attrs={'class':'form-control'}),
-            'phone': forms.TextInput(attrs={'class':'form-control','placeholder':'+91 XXXXX XXXXX'}),
+            'phone': forms.TextInput(attrs={'class':'form-control','placeholder':'10-digit mobile number', 'pattern': '[0-9]{10}', 'title': 'Phone number must be exactly 10 digits', 'maxlength': '10', 'minlength': '10', 'type': 'tel', 'oninput': "this.value = this.value.replace(/[^0-9]/g, '');"}),
             'role': forms.Select(attrs={'class':'form-select'}),
             'daily_wage': forms.NumberInput(attrs={'class':'form-control','step':'0.01','min':'0'}),
             'address': forms.Textarea(attrs={'class':'form-control','rows':3}),
@@ -38,6 +38,10 @@ class EmployeeForm(forms.ModelForm):
     def clean_phone(self):
         phone = self.cleaned_data.get('phone')
         if phone:
+            import re
+            if not re.fullmatch(r'\d{10}', phone):
+                raise forms.ValidationError("Mobile number must be exactly 10 digits.")
+                
             qs = Employee.objects.filter(phone=phone)
             if self.instance and self.instance.pk:
                 qs = qs.exclude(pk=self.instance.pk)

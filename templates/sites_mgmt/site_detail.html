@@ -22,7 +22,9 @@
           {% if site.end_date %}<div class="col-12"><i class="bi bi-calendar-check text-muted me-2"></i>End: {{ site.end_date }}</div>{% endif %}
           {% if site.client_name %}<div class="col-12"><i class="bi bi-person text-muted me-2"></i>{{ site.client_name }}</div>{% endif %}
           {% if site.client_phone %}<div class="col-12"><i class="bi bi-telephone text-muted me-2"></i>{{ site.client_phone }}</div>{% endif %}
-          {% if user.can_manage and site.estimated_cost %}<div class="col-12"><i class="bi bi-cash text-muted me-2"></i>Est. ₹{{ site.estimated_cost|floatformat:0 }}</div>{% endif %}
+          {% if user.role == 'admin' or user.is_superuser %}
+            {% if site.estimated_cost %}<div class="col-12"><i class="bi bi-cash text-muted me-2"></i>Est. ₹{{ site.estimated_cost|floatformat:0 }}</div>{% endif %}
+          {% endif %}
           {% if site.description %}<div class="col-12 mt-2 text-muted">{{ site.description }}</div>{% endif %}
         </div>
       </div>
@@ -33,7 +35,7 @@
       </div>
       {% endif %}
     </div>
-      {% if user.can_manage %}
+      {% if user.role == 'admin' or user.is_superuser %}
       <div class="card border-0 shadow-sm mt-4">
         <div class="card-header bg-dark text-white pt-3 pb-3 border-bottom-0 rounded-top">
           <h6 class="mb-0 fw-700 text-uppercase d-flex align-items-center" style="letter-spacing: 1px;">
@@ -182,21 +184,21 @@
       <div class="card-body p-0">
         <div class="table-responsive">
           <table class="table mb-0 align-middle">
-            <thead class="table-light"><tr><th>Item Name</th><th>Total Quantity Delivered</th>{% if user.can_manage %}<th>Estimated Cost</th>{% endif %}</tr></thead>
+            <thead class="table-light"><tr><th>Item Name</th><th>Total Quantity Delivered</th>{% if user.role == 'admin' or user.is_superuser %}<th>Estimated Cost</th>{% endif %}</tr></thead>
             <tbody>
               {% for mat in delivered_materials %}
               <tr>
                 <td class="fw-500">{{ mat.item__name }}</td>
                 <td>{{ mat.total_quantity }} <span class="text-muted small">{{ mat.item__unit }}</span></td>
-                {% if user.can_manage %}
+                {% if user.role == 'admin' or user.is_superuser %}
                 <td class="text-success fw-500">₹{% widthratio mat.total_quantity 1 mat.item__unit_price %}</td>
                 {% endif %}
               </tr>
               {% empty %}
-              <tr><td colspan="{% if user.can_manage %}3{% else %}2{% endif %}" class="text-center py-4 text-muted">No materials delivered yet.</td></tr>
+              <tr><td colspan="{% if user.role == 'admin' or user.is_superuser %}3{% else %}2{% endif %}" class="text-center py-4 text-muted">No materials delivered yet.</td></tr>
               {% endfor %}
             </tbody>
-            {% if delivered_materials and user.can_manage %}
+            {% if delivered_materials and user.role == 'admin' or delivered_materials and user.is_superuser %}
             <tfoot class="table-light">
               <tr>
                 <td colspan="2" class="text-end fw-600">Total Material Cost:</td>

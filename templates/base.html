@@ -8,6 +8,9 @@
   <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="{% static 'manifest.json' %}">
+  <link rel="apple-touch-icon" href="{% static 'img/Logo-removebg-preview (1).png' %}">
   <script>
     const savedTheme = localStorage.getItem('theme') || 'dark';
     if(savedTheme === 'dark') document.documentElement.setAttribute('data-bs-theme', 'dark');
@@ -148,6 +151,11 @@
       background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 100%);
       pointer-events: none;
     }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .stat-card { animation: fadeInUp 0.4s ease-out forwards; }
     .stat-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(31, 38, 135, 0.12); }
     .stat-card .stat-icon {
       width: 56px; height: 56px; border-radius: 16px;
@@ -161,7 +169,7 @@
     .stat-card .stat-value { font-size: clamp(1.25rem, 3vw, 2.4rem); font-weight: 800; color: var(--text-main); margin-top: 1rem; letter-spacing: -1px; word-break: break-word; }
     .stat-card .stat-label { font-size: .85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-top: 0.25rem;}
     
-    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 20px; box-shadow: var(--card-shadow); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); overflow: hidden; transition: transform 0.3s ease, box-shadow 0.3s ease; }
+    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 20px; box-shadow: var(--card-shadow); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); overflow: hidden; transition: transform 0.3s ease, box-shadow 0.3s ease; animation: fadeInUp 0.5s ease-out forwards; }
     .card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.08); }
     [data-bs-theme="dark"] .card:hover { box-shadow: 0 20px 40px rgba(0,0,0,0.6); }
     .card-header { background: rgba(255,255,255,0.4); border-bottom: 1px solid rgba(0,0,0,.05); border-radius: 20px 20px 0 0 !important; padding: 1rem 1.5rem; backdrop-filter: blur(10px); }
@@ -189,6 +197,7 @@
     .btn-primary:hover { background: linear-gradient(135deg, var(--primary-light), var(--primary)); transform: translateY(-2px); box-shadow: 0 8px 25px rgba(16, 185, 129, 0.45); color: #fff; }
     .btn-outline-primary { border: 2px solid var(--primary); color: var(--primary); border-radius: 12px; background: transparent; font-weight: 600; }
     .btn-outline-primary:hover { background: var(--primary); color: #fff; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25); border-color: var(--primary); }
+    .btn:active { transform: scale(0.96) !important; box-shadow: none !important; }
     
     .form-control, .form-select { border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); padding: 0.8rem 1.2rem; transition: all 0.3s ease; background: rgba(255,255,255,0.8); font-weight: 500; }
     .form-control:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15); background: #fff;}
@@ -457,13 +466,20 @@
   </div>
 
   <div class="content">
-    {% for message in messages %}
-    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-      <i class="bi bi-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'danger' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
-      {{ message }}
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <!-- Toast Notifications -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1080; margin-bottom: 70px;">
+      {% for message in messages %}
+      <div class="toast align-items-center text-bg-{{ message.tags }} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000">
+        <div class="d-flex">
+          <div class="toast-body fw-500">
+            <i class="bi bi-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'danger' %}exclamation-triangle{% else %}info-circle{% endif %} me-2 fs-5"></i>
+            {{ message }}
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+      </div>
+      {% endfor %}
     </div>
-    {% endfor %}
     {% block content %}{% endblock %}
   </div>
 </div>
@@ -575,6 +591,24 @@
       updateBtnText();
     });
   }
+
+  // Initialize Toasts
+  const toastElList = document.querySelectorAll('.toast');
+  const toastList = [...toastElList].map(toastEl => new bootstrap.Toast(toastEl));
+  toastList.forEach(toast => toast.show());
+
+  // Form Submission Loading State
+  document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', function() {
+      const btn = this.querySelector('button[type="submit"]');
+      if(btn && !btn.classList.contains('no-loader')) {
+        // Prevent double submission visually
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+        btn.classList.add('disabled');
+        btn.style.pointerEvents = 'none';
+      }
+    });
+  });
 </script>
 {% block extra_js %}{% endblock %}
 </body>

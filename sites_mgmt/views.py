@@ -242,21 +242,31 @@ def download_site_materials_pdf(request, pk):
     elements.append(Paragraph(f"Material Delivery Report: {site.name}", styles['Title']))
     elements.append(Spacer(1, 12))
     
-    data = [['Item Name', 'Quantity Delivered', 'Unit', 'Unit Price (INR)', 'Total Cost (INR)']]
+    is_admin = request.user.is_superuser or request.user.role == 'admin'
+    
+    if is_admin:
+        data = [['Item Name', 'Quantity Delivered', 'Unit', 'Unit Price (INR)', 'Total Cost (INR)']]
+    else:
+        data = [['Item Name', 'Quantity Delivered', 'Unit']]
+        
     total_cost = 0
     
     for mat in delivered_materials:
-        cost = mat['total_quantity'] * mat['item__unit_price']
-        total_cost += cost
-        data.append([
+        row = [
             mat['item__name'],
             f"{mat['total_quantity']:.2f}",
             mat['item__unit'],
-            f"{mat['item__unit_price']:.2f}",
-            f"{cost:,.2f}"
-        ])
+        ]
         
-    data.append(['', '', '', 'Grand Total:', f"{total_cost:,.2f}"])
+        if is_admin:
+            cost = mat['total_quantity'] * mat['item__unit_price']
+            total_cost += cost
+            row.extend([f"{mat['item__unit_price']:.2f}", f"{cost:,.2f}"])
+            
+        data.append(row)
+        
+    if is_admin:
+        data.append(['', '', '', 'Grand Total:', f"{total_cost:,.2f}"])
     
     table = Table(data)
     table.setStyle(TableStyle([

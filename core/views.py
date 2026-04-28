@@ -107,7 +107,7 @@ def dashboard(request):
     pending_requests = MaterialRequest.objects.filter(status='pending').count()
 
     recent_employees = Employee.objects.filter(status='active').order_by('-joining_date')[:5]
-    sites = WorkSite.objects.filter(status='active').prefetch_related('assignments')[:6]
+    sites = WorkSite.objects.filter(status='active').prefetch_related('assignments', 'areas')[:6]
 
     # Role distribution chart
     role_counts = Employee.objects.filter(status='active').values('role').annotate(count=Count('id'))

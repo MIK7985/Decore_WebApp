@@ -12,7 +12,7 @@ from core.decorators import admin_required, admin_or_office_staff_required
 
 @login_required
 def employee_list(request):
-    employees = Employee.objects.exclude(role='office_staff')
+    employees = Employee.objects.all()
     query = request.GET.get('q', '')
     role_filter = request.GET.get('role', '')
     status_filter = request.GET.get('status', '')
@@ -32,7 +32,7 @@ def employee_list(request):
         'query': query,
         'role_filter': role_filter,
         'status_filter': status_filter,
-        'role_choices': [c for c in Employee.ROLE_CHOICES if c[0] != 'office_staff'],
+        'role_choices': Employee.ROLE_CHOICES,
     })
 
 
