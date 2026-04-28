@@ -10,4 +10,5 @@ urlpatterns = [
     path('<int:pk>/update-photo/', views.employee_update_photo, name='employee_update_photo'),
     path('<int:pk>/remove-photo/', views.employee_remove_photo, name='employee_remove_photo'),
     path('api/', views.employee_api, name='employee_api'),
+    path('download-pdf/', views.download_employees_pdf, name='download_employees_pdf'),
 ]

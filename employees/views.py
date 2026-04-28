@@ -3,7 +3,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q
 from django.core.paginator import Paginator
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from .models import Employee
 from .models import Employee
 from .forms import EmployeeForm
@@ -203,3 +207,80 @@ def employee_remove_photo(request, pk):
             messages.success(request, "Profile photo removed successfully!")
             
     return redirect('employee_detail', pk=pk)
+
+
+@login_required
+def download_employees_pdf(request):
+    employees = Employee.objects.all().order_by('employee_id')
+    
+    # Filter using GET params exactly like the list view
+    query = request.GET.get('q', '')
+    role_filter = request.GET.get('role', '')
+    status_filter = request.GET.get('status', '')
+
+    if query:
+        employees = employees.filter(Q(name__icontains=query) | Q(phone__icontains=query))
+    if role_filter:
+        employees = employees.filter(role=role_filter)
+    if status_filter:
+        employees = employees.filter(status=status_filter)
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="employees_list.pdf"'
+
+    doc = SimpleDocTemplate(
+        response,
+        pagesize=A4,
+        rightMargin=30, leftMargin=30,
+        topMargin=40, bottomMargin=30
+    )
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Title
+    title_style = ParagraphStyle(
+        'TitleStyle',
+        parent=styles['Heading1'],
+        fontName='Helvetica-Bold',
+        fontSize=18,
+        textColor=colors.HexColor("#0f172a"),
+        spaceAfter=20,
+    )
+    elements.append(Paragraph("Decore ERP - Employees List", title_style))
+    elements.append(Spacer(1, 10))
+
+    # Table Header
+    data = [['ID', 'Name', 'Phone', 'Role', 'Status']]
+
+    # Table Rows
+    for emp in employees:
+        data.append([
+            emp.employee_id or '-',
+            emp.name,
+            emp.phone or '-',
+            emp.get_role_display(),
+            emp.get_status_display()
+        ])
+
+    table = Table(data, colWidths=[60, 160, 100, 120, 80])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#0f172a")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor("#ffffff")),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 11),
+        ('TOPPADDING', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTSIZE', (0, 1), (-1, -1), 10),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor("#334155")),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.HexColor("#ffffff"), colors.HexColor("#f8fafc")]),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
+        ('TOPPADDING', (0, 1), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 10),
+    ]))
+    
+    elements.append(table)
+    doc.build(elements)
+    
+    return response

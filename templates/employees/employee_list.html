@@ -7,9 +7,12 @@
     <h5 class="mb-0 fw-700">All Employees</h5>
     <small class="text-muted">Manage workforce records</small>
   </div>
-  {% if user.can_manage %}
-  <a href="{% url 'employee_add' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add Employee</a>
-  {% endif %}
+  <div class="d-flex gap-2">
+    <a href="{% url 'download_employees_pdf' %}?{{ request.GET.urlencode }}" class="btn btn-outline-secondary"><i class="bi bi-file-earmark-pdf me-1"></i>Download PDF</a>
+    {% if user.can_manage %}
+    <a href="{% url 'employee_add' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add Employee</a>
+    {% endif %}
+  </div>
 </div>
 
 <div class="card shadow-sm border-0">
