@@ -5,7 +5,7 @@ from django.contrib.messages import constants as messages
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-decore-developers-pop-work-mgmt-change-in-production-2024'
 DEBUG = False
-ALLOWED_HOSTS = ['3.26.13.211', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['decoredevelopers.co.in', 'www.decoredevelopers.co.in', '3.26.13.211', 'localhost', '127.0.0.1']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
