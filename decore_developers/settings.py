@@ -54,18 +54,20 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'decore_developers.wsgi.application'
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.environ.get('DB_NAME', 'decore_db'),
-#         'USER': os.environ.get('DB_USER', 'decore_user'),
-#         'PASSWORD': os.environ.get('DB_PASSWORD', 'decore_pass'),
-#         'HOST': os.environ.get('DB_HOST', 'localhost'),
-#         'PORT': os.environ.get('DB_PORT', '5432'),
-#     }
-# }
-# SQLite alternative (uncomment for local dev):
-DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3'}}
+if os.environ.get('USE_POSTGRES') == 'True':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME', 'decore_db'),
+            'USER': os.environ.get('DB_USER', 'decore_user'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', 'decore_pass'),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+        }
+    }
+else:
+    # Default to SQLite for local development
+    DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3'}}
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
