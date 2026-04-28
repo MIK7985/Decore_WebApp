@@ -1,0 +1,304 @@
+{% extends 'base.html' %}
+{% block title %}{{ site.name }}{% endblock %}
+{% block page_title %}Site Details{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-12 col-md-4">
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="d-flex align-items-center mb-3">
+          <div class="rounded p-3 me-3" style="background:#e8f0fe;color:#1e3a5f;"><i class="bi bi-building fs-3"></i></div>
+          <div>
+            <h5 class="fw-700 mb-0">{{ site.name }}</h5>
+            {% if site.status == 'active' %}<span class="badge badge-active rounded-pill">Active</span>
+            {% elif site.status == 'completed' %}<span class="badge bg-light text-dark border">Completed</span>
+            {% else %}<span class="badge" style="background:#fff3e0;color:#e65100;">On Hold</span>{% endif %}
+          </div>
+        </div>
+        <div class="row g-2 small">
+          <div class="col-12"><i class="bi bi-geo-alt text-muted me-2"></i>{{ site.location }}</div>
+          {% if site.square_feet %}<div class="col-12"><i class="bi bi-aspect-ratio text-muted me-2"></i>{{ site.square_feet }} sq ft</div>{% endif %}
+          <div class="col-12"><i class="bi bi-calendar text-muted me-2"></i>Started: {{ site.start_date }}</div>
+          {% if site.end_date %}<div class="col-12"><i class="bi bi-calendar-check text-muted me-2"></i>End: {{ site.end_date }}</div>{% endif %}
+          {% if site.client_name %}<div class="col-12"><i class="bi bi-person text-muted me-2"></i>{{ site.client_name }}</div>{% endif %}
+          {% if site.client_phone %}<div class="col-12"><i class="bi bi-telephone text-muted me-2"></i>{{ site.client_phone }}</div>{% endif %}
+          {% if user.can_manage and site.estimated_cost %}<div class="col-12"><i class="bi bi-cash text-muted me-2"></i>Est. ₹{{ site.estimated_cost|floatformat:0 }}</div>{% endif %}
+          {% if site.description %}<div class="col-12 mt-2 text-muted">{{ site.description }}</div>{% endif %}
+        </div>
+      </div>
+      {% if user.role == 'admin' or user.is_superuser %}
+      <div class="card-footer bg-white d-flex gap-2">
+        <a href="{% url 'site_edit' site.pk %}" class="btn btn-primary btn-sm flex-fill"><i class="bi bi-pencil me-1"></i>Edit</a>
+        <a href="{% url 'site_delete' site.pk %}" class="btn btn-outline-warning btn-sm"><i class="bi bi-archive"></i></a>
+      </div>
+      {% endif %}
+    </div>
+      {% if user.can_manage %}
+      <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-dark text-white pt-3 pb-3 border-bottom-0 rounded-top">
+          <h6 class="mb-0 fw-700 text-uppercase d-flex align-items-center" style="letter-spacing: 1px;">
+            <i class="bi bi-wallet2 me-2"></i> Project Financials
+          </h6>
+        </div>
+        <div class="card-body bg-light">
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted fw-600">Est. Budget</span>
+            <span class="fw-800 text-dark">₹{{ site.estimated_cost|floatformat:0|default:"0" }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted fw-600">Total Labor Cost</span>
+            <span class="fw-700 text-danger">- ₹{{ site.get_total_labor_cost|floatformat:0 }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-3 pb-3 border-bottom border-secondary border-opacity-25">
+            <span class="text-muted fw-600">Total Material Cost</span>
+            <span class="fw-700 text-danger">- ₹{{ site.get_material_cost|floatformat:0 }}</span>
+          </div>
+          
+          {% with profit=site.get_profit_loss %}
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="fw-800 text-uppercase" style="font-size: 0.85rem;">{% if profit >= 0 %}Gross Profit{% else %}Loss (Over Budget){% endif %}</span>
+            <span class="fs-3 fw-900 {% if profit >= 0 %}text-success{% else %}text-danger{% endif %}" style="letter-spacing: -0.5px;">
+              {% if profit >= 0 %}+{% endif %}₹{{ profit|floatformat:0 }}
+            </span>
+          </div>
+          
+          <!-- Progress bar for budget -->
+          {% if site.estimated_cost and site.estimated_cost > 0 %}
+            {% widthratio site.get_material_cost|add:site.get_total_labor_cost site.estimated_cost 100 as spent_pct %}
+            <div class="progress mt-4 shadow-sm" style="height: 10px; border-radius: 10px;">
+              <div class="progress-bar {% if spent_pct|add:0 > 100 %}bg-danger{% elif spent_pct|add:0 > 85 %}bg-warning{% else %}bg-success{% endif %}" style="width: {% if spent_pct|add:0 > 100 %}100{% else %}{{ spent_pct }}{% endif %}%;"></div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-2">
+              <span class="small fw-600 {% if spent_pct|add:0 > 100 %}text-danger{% elif spent_pct|add:0 > 85 %}text-warning{% else %}text-success{% endif %}">{{ spent_pct|default:"0" }}% Spent</span>
+              <span class="small text-muted fw-500">of ₹{{ site.estimated_cost|floatformat:0 }}</span>
+            </div>
+          {% else %}
+             <div class="text-center mt-3 p-2 bg-white rounded border border-warning">
+               <small class="text-warning fw-600"><i class="bi bi-exclamation-triangle-fill me-1"></i> Add Estimated Cost to track budget.</small>
+             </div>
+          {% endif %}
+          
+          {% endwith %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  <div class="col-12 col-md-8">
+    <div class="card">
+      <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span class="fw-600"><i class="bi bi-people me-2 text-primary"></i>Assigned Workers ({{ assignments.count }})</span>
+        {% if user.role == 'admin' or user.is_superuser %}
+        <a href="{% url 'assign_employee' site.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-person-plus me-1"></i>Assign Worker</a>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light"><tr><th>Employee</th><th>Role</th><th>Assigned</th><th>Active</th><th></th></tr></thead>
+            <tbody>
+              {% for a in assignments %}
+              <tr>
+                <td><a href="{% url 'employee_detail' a.employee.pk %}" class="text-decoration-none fw-500">{{ a.employee.name }}</a></td>
+                <td><span class="badge bg-light text-dark border small">{{ a.employee.get_role_display }}</span></td>
+                <td class="small text-muted">{{ a.assigned_date }}</td>
+                <td>{% if a.is_active %}<span class="badge badge-active">Yes</span>{% else %}<span class="badge badge-inactive">No</span>{% endif %}</td>
+                <td>
+                  {% if user.role == 'admin' or user.is_superuser %}
+                  <a href="{% url 'remove_assignment' a.pk %}" class="btn btn-sm btn-light text-danger" title="Remove"><i class="bi bi-x-lg"></i></a>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="6" class="text-center py-4 text-muted">No workers assigned yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Work Areas (Client Portal Progress) -->
+    <div class="card mt-4">
+      <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span class="fw-600"><i class="bi bi-grid-1x2 me-2 text-primary"></i>Work Areas & Progress</span>
+        {% if user.role == 'admin' or user.is_superuser or is_assigned_main_worker %}
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addAreaModal"><i class="bi bi-plus-lg me-1"></i>Add Area</button>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table mb-0 align-middle">
+            <thead class="table-light"><tr><th>Area Name</th><th>Status</th><th>Progress</th>{% if user.role == 'admin' or user.is_superuser %}<th>Images</th>{% endif %}<th></th></tr></thead>
+            <tbody>
+              {% for area in site.areas.all %}
+              <tr>
+                <td class="fw-500">{{ area.name }}</td>
+                <td>
+                  {% if area.status == 'completed' %}<span class="badge badge-active">Completed</span>
+                  {% elif area.status == 'in_progress' %}<span class="badge" style="background:rgba(245,158,11,0.15);color:#D97706;">In Progress</span>
+                  {% else %}<span class="badge badge-inactive">Not Started</span>{% endif %}
+                </td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="progress flex-grow-1" style="height: 6px;">
+                      <div class="progress-bar bg-primary" role="progressbar" style="width: {{ area.progress_percentage }}%;"></div>
+                    </div>
+                    <small class="text-muted">{{ area.progress_percentage }}%</small>
+                  </div>
+                </td>
+                {% if user.role == 'admin' or user.is_superuser %}
+                <td><span class="badge bg-light text-dark border">{{ area.images.count }}</span></td>
+                {% endif %}
+                <td>
+                  <div class="d-flex gap-2">
+                    {% if user.role == 'admin' or user.is_superuser or is_assigned_main_worker %}
+                    <button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#updateAreaModal{{ area.pk }}">Update</button>
+                    {% endif %}
+                    {% if user.role == 'admin' or user.is_superuser %}
+                      {% if area.images.count > 0 %}
+                      <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#viewImagesModal{{ area.pk }}">
+                        <i class="bi bi-images"></i>
+                      </button>
+                      {% endif %}
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="text-center py-4 text-muted">No areas added yet. Create areas to track progress.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Delivered Materials -->
+    <div class="card mt-4">
+      <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span class="fw-600"><i class="bi bi-box-seam me-2 text-primary"></i>Materials Delivered</span>
+        <a href="{% url 'download_site_materials_pdf' site.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-file-pdf me-1"></i>Download PDF</a>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table mb-0 align-middle">
+            <thead class="table-light"><tr><th>Item Name</th><th>Total Quantity Delivered</th>{% if user.can_manage %}<th>Estimated Cost</th>{% endif %}</tr></thead>
+            <tbody>
+              {% for mat in delivered_materials %}
+              <tr>
+                <td class="fw-500">{{ mat.item__name }}</td>
+                <td>{{ mat.total_quantity }} <span class="text-muted small">{{ mat.item__unit }}</span></td>
+                {% if user.can_manage %}
+                <td class="text-success fw-500">₹{% widthratio mat.total_quantity 1 mat.item__unit_price %}</td>
+                {% endif %}
+              </tr>
+              {% empty %}
+              <tr><td colspan="{% if user.can_manage %}3{% else %}2{% endif %}" class="text-center py-4 text-muted">No materials delivered yet.</td></tr>
+              {% endfor %}
+            </tbody>
+            {% if delivered_materials and user.can_manage %}
+            <tfoot class="table-light">
+              <tr>
+                <td colspan="2" class="text-end fw-600">Total Material Cost:</td>
+                <td class="fw-700 text-success fs-6">₹{{ total_material_cost|floatformat:2 }}</td>
+              </tr>
+            </tfoot>
+            {% endif %}
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Area Modal -->
+<div class="modal fade" id="addAreaModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="POST" action="{% url 'site_area_add' site.pk %}" class="modal-content">
+      {% csrf_token %}
+      <div class="modal-header">
+        <h5 class="modal-title">Add Work Area</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Area Name (e.g. Master Bedroom, Kitchen)</label>
+          <input type="text" name="name" class="form-control" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-primary w-100">Add Area</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Update Area Modals -->
+{% for area in site.areas.all %}
+  {% if user.role == 'admin' or user.is_superuser or is_assigned_main_worker %}
+  <div class="modal fade" id="updateAreaModal{{ area.pk }}" tabindex="-1">
+    <div class="modal-dialog">
+      <form method="POST" action="{% url 'site_area_update' area.pk %}" enctype="multipart/form-data" class="modal-content">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Update {{ area.name }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select" onchange="if(this.value === 'completed') { this.form.querySelector('input[name=progress_percentage]').value = 100; }">
+              <option value="not_started" {% if area.status == 'not_started' %}selected{% endif %}>Not Started</option>
+              <option value="in_progress" {% if area.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+              <option value="completed" {% if area.status == 'completed' %}selected{% endif %}>Completed</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Progress Percentage (0-100)</label>
+            <input type="number" name="progress_percentage" class="form-control" min="0" max="100" value="{{ area.progress_percentage }}">
+          </div>
+          {% if user.role == 'admin' or user.is_superuser %}
+          <div class="mb-3">
+            <label class="form-label">Upload Images (Optional)</label>
+            <input type="file" name="images" class="form-control" accept="image/*" multiple>
+          </div>
+          {% endif %}
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary w-100">Save Progress</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- View Images Modal -->
+  {% if user.role == 'admin' or user.is_superuser %}
+    {% if area.images.count > 0 %}
+    <div class="modal fade" id="viewImagesModal{{ area.pk }}" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-images text-primary me-2"></i>{{ area.name }} Photos</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body bg-light">
+            <div class="row g-3">
+              {% for img in area.images.all %}
+              <div class="col-6 col-md-4">
+                <a href="{{ img.image.url }}" target="_blank" class="d-block shadow-sm rounded overflow-hidden" style="aspect-ratio: 1/1;">
+                  <img src="{{ img.image.url }}" class="w-100 h-100 object-fit-cover" alt="Progress Photo">
+                </a>
+                <div class="text-center small text-muted mt-1">{{ img.uploaded_at|date:"M d, Y h:i A" }}</div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+{% endblock %}

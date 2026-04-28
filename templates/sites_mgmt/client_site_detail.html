@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block title %}Project Progress - {{ site.name }}{% endblock %}
+{% block page_title %}Live Project Tracking{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card bg-primary text-white border-0 shadow-lg" style="background: var(--sidebar-gradient) !important;">
+      <div class="card-body p-4 p-md-5">
+        <h2 class="fw-800 mb-2">{{ site.name }}</h2>
+        <p class="mb-4 opacity-75"><i class="bi bi-geo-alt me-2"></i>{{ site.location }}</p>
+        
+        <div class="d-flex flex-wrap gap-4">
+          <div>
+            <small class="text-uppercase fw-700 opacity-50 d-block mb-1">Status</small>
+            <span class="badge bg-white text-primary px-3 py-2 rounded-pill fw-700">{{ site.get_status_display }}</span>
+          </div>
+          <div>
+            <small class="text-uppercase fw-700 opacity-50 d-block mb-1">Started</small>
+            <span class="fw-600">{{ site.start_date|date:"F d, Y" }}</span>
+          </div>
+          {% if site.estimated_cost %}
+          <div>
+            <small class="text-uppercase fw-700 opacity-50 d-block mb-1">Budget Est.</small>
+            <span class="fw-600">₹{{ site.estimated_cost|floatformat:0 }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h4 class="fw-700 mb-3"><i class="bi bi-grid-1x2 text-primary me-2"></i>Work Areas Progress</h4>
+
+<div class="row g-4">
+  {% for area in areas %}
+  <div class="col-12 col-lg-6">
+    <div class="card h-100 border-0 shadow-sm">
+      <div class="card-header bg-white border-bottom-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
+        <h5 class="fw-700 mb-0">{{ area.name }}</h5>
+        {% if area.status == 'completed' %}<span class="badge badge-active rounded-pill px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i> Completed</span>
+        {% elif area.status == 'in_progress' %}<span class="badge rounded-pill px-3 py-2" style="background:rgba(245,158,11,0.15);color:#D97706;"><i class="bi bi-arrow-repeat me-1"></i> In Progress</span>
+        {% else %}<span class="badge badge-inactive rounded-pill px-3 py-2">Not Started</span>{% endif %}
+      </div>
+      <div class="card-body">
+        
+        <!-- Progress Bar -->
+        <div class="d-flex justify-content-between mb-1">
+          <small class="fw-600 text-muted">Completion</small>
+          <small class="fw-700 {% if area.progress_percentage == 100 %}text-success{% else %}text-primary{% endif %}">{{ area.progress_percentage }}%</small>
+        </div>
+        <div class="progress mb-4" style="height: 10px; border-radius: 10px;">
+          <div class="progress-bar {% if area.progress_percentage == 100 %}bg-success{% else %}bg-primary{% endif %} progress-bar-striped {% if area.progress_percentage > 0 and area.progress_percentage < 100 %}progress-bar-animated{% endif %}" role="progressbar" style="width: {{ area.progress_percentage }}%;"></div>
+        </div>
+
+        <!-- Images Gallery -->
+        {% if area.images.all %}
+        <h6 class="fw-600 mb-3 text-muted small text-uppercase">Latest Photos</h6>
+        <div class="d-flex gap-2 overflow-auto pb-2" style="scroll-snap-type: x mandatory;">
+          {% for img in area.images.all %}
+          <div style="min-width: 120px; max-width: 120px; height: 120px; scroll-snap-align: start;" class="position-relative">
+            <a href="{{ img.image.url }}" target="_blank">
+              <img src="{{ img.image.url }}" class="img-fluid rounded shadow-sm object-fit-cover w-100 h-100" alt="Progress Photo">
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center p-4 bg-light rounded text-muted mt-3">
+          <i class="bi bi-camera fs-3 d-block mb-2 opacity-50"></i>
+          <small>No photos uploaded yet.</small>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="card text-center py-5">
+      <div class="card-body">
+        <h5 class="fw-700 text-muted">No Work Areas Defined</h5>
+        <p class="text-muted mb-0">Decore Developers will divide your project into work areas soon.</p>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

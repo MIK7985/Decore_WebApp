@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Deliveries{% endblock %}
+{% block page_title %}Delivery Log{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+  <div>
+    <h5 class="mb-0 fw-700">Route Map & Deliveries</h5>
+    <small class="text-muted">Record the work sites you visited and items delivered today.</small>
+  </div>
+  {% if request.user.role == 'driver' %}
+  <a href="{% url 'delivery_log_create' %}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i> Add New Delivery
+  </a>
+  {% endif %}
+</div>
+
+<div class="row g-4">
+  {% for log in logs %}
+  <div class="col-12 col-lg-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header d-flex justify-content-between align-items-center border-0 bg-transparent pt-4 pb-0">
+        <div>
+          <h5 class="fw-bold text-primary mb-1"><i class="bi bi-geo-alt-fill me-2"></i>{{ log.site.name }}</h5>
+          <span class="text-muted small fw-600"><i class="bi bi-calendar-check me-1"></i>{{ log.date|date:"l, M d, Y" }}</span>
+        </div>
+        {% if request.user.can_manage %}
+        <div class="text-end">
+          <div class="small text-muted fw-bold text-uppercase mb-1">Material Cost</div>
+          <div class="fs-5 fw-800 text-dark">₹{{ log.get_total_cost }}</div>
+        </div>
+        {% else %}
+        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2">
+          <i class="bi bi-check-circle-fill me-1"></i> Delivered
+        </span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <h6 class="text-uppercase fw-700 text-muted small mb-3" style="letter-spacing: 1px;">Items Delivered</h6>
+        <div class="table-responsive bg-light rounded-3 p-2 mb-3">
+          <table class="table table-sm table-borderless mb-0">
+            <tbody>
+              {% for delivery_item in log.items.all %}
+              <tr>
+                <td class="fw-600 ps-2"><i class="bi bi-box-seam me-2 text-muted"></i>{{ delivery_item.item.name }}</td>
+                <td class="text-end fw-bold pe-3">
+                  {{ delivery_item.quantity|floatformat:"-2" }} <span class="fw-normal text-muted small">{{ delivery_item.item.unit }}</span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% if log.notes %}
+        <div class="d-flex p-3 rounded-3 bg-secondary bg-opacity-10">
+          <i class="bi bi-info-circle text-primary me-2 mt-1"></i>
+          <p class="mb-0 text-muted small fw-500">{{ log.notes }}</p>
+        </div>
+        {% endif %}
+      </div>
+      {% if request.user.can_manage %}
+      <div class="card-footer bg-transparent border-top border-light py-3 text-muted small fw-600">
+        <i class="bi bi-person-badge me-1"></i> Delivered by: <span class="text-dark">{{ log.driver.name }}</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="card border-0 shadow-sm text-center py-5">
+      <div class="card-body">
+        <i class="bi bi-map text-muted opacity-50 mb-3 d-block" style="font-size: 3rem;"></i>
+        <h5 class="fw-bold text-dark">No Deliveries Logged</h5>
+        <p class="text-muted mb-4">{% if request.user.role == 'driver' %}You haven't logged any deliveries yet. Click the button above to add your first stop.{% else %}No delivery logs have been submitted by drivers yet.{% endif %}</p>
+        {% if request.user.role == 'driver' %}
+        <a href="{% url 'delivery_log_create' %}" class="btn btn-primary px-4 rounded-pill">
+          <i class="bi bi-plus-lg me-1"></i> Add Your First Delivery
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% block title %}Employees{% endblock %}
+{% block page_title %}Employee Management{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h5 class="mb-0 fw-700">All Employees</h5>
+    <small class="text-muted">Manage workforce records</small>
+  </div>
+  {% if user.can_manage %}
+  <a href="{% url 'employee_add' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add Employee</a>
+  {% endif %}
+</div>
+
+<div class="card shadow-sm border-0">
+  <div class="card-header bg-transparent border-bottom-0 pt-4 pb-2 px-4">
+    <form id="filterForm" method="get" class="row g-3 align-items-center">
+      <div class="col-12 col-md-4">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+          <input type="text" name="q" class="form-control form-control-sm border-start-0 ps-0" placeholder="Search name or phone…" value="{{ query }}" oninput="autoSubmit()">
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <select name="role" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">All Roles</option>
+          {% for val,label in role_choices %}<option value="{{ val }}" {% if role_filter == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-3">
+        <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">All Status</option>
+          <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+          <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+      </div>
+      <div class="col-auto"><noscript><button type="submit" class="btn btn-primary btn-sm">Search</button></noscript></div>
+      <div class="col-auto"><a href="{% url 'employee_list' %}" class="btn btn-light btn-sm text-muted">Reset</a></div>
+    </form>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>#</th><th>Employee</th><th class="d-none d-lg-table-cell">Phone</th>
+            <th class="d-none d-md-table-cell">Daily Wage</th><th class="d-none d-lg-table-cell">Joining Date</th><th class="d-none d-sm-table-cell">Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for emp in employees %}
+          <tr>
+            <td class="text-muted small fw-700">{{ emp.employee_id|default:"-" }}</td>
+            <td>
+              <div class="d-flex align-items-center">
+                {% if emp.profile_pic %}
+                <img src="{{ emp.profile_pic.url }}" alt="{{ emp.name }}" class="rounded-circle object-fit-cover me-3 shadow-sm" style="width: 42px; height: 42px;">
+                {% else %}
+                <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold me-3 shadow-sm" style="width: 42px; height: 42px; font-size: 1.1rem;">
+                  {{ emp.name|first|upper }}
+                </div>
+                {% endif %}
+                <div>
+                  <a href="{% url 'employee_detail' emp.pk %}" class="text-decoration-none fw-700 text-dark d-block mb-1" style="line-height: 1;">{{ emp.name }}</a>
+                  <span class="text-muted fw-600" style="font-size: 0.75rem;">{{ emp.get_role_display }}</span>
+                </div>
+              </div>
+            </td>
+            <td class="text-muted d-none d-lg-table-cell">{{ emp.phone }}</td>
+            <td class="fw-500 text-success d-none d-md-table-cell">₹{{ emp.daily_wage }}</td>
+            <td class="text-muted small d-none d-lg-table-cell">{{ emp.joining_date }}</td>
+            <td class="d-none d-sm-table-cell">
+              {% if emp.status == 'active' %}
+              <span class="badge badge-active rounded-pill">Active</span>
+              {% else %}
+              <span class="badge badge-inactive rounded-pill">Inactive</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="d-flex gap-1">
+                <a href="{% url 'employee_detail' emp.pk %}" class="btn btn-sm btn-light" title="View"><i class="bi bi-eye"></i></a>
+                {% if user.can_manage %}
+                <a href="{% url 'employee_edit' emp.pk %}" class="btn btn-sm btn-light d-none d-md-inline-block" title="Edit"><i class="bi bi-pencil"></i></a>
+                {% if emp.status == 'active' %}
+                <a href="{% url 'employee_delete' emp.pk %}" class="btn btn-sm btn-light text-danger d-none d-sm-inline-block" title="Deactivate"><i class="bi bi-person-x"></i></a>
+                {% else %}
+                <a href="{% url 'employee_delete' emp.pk %}" class="btn btn-sm btn-light text-success d-none d-sm-inline-block" title="Activate"><i class="bi bi-person-check"></i></a>
+                {% endif %}
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" class="text-center py-4 text-muted">No employees found. <a href="{% url 'employee_add' %}">Add one?</a></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% if employees.has_other_pages %}
+  <div class="card-footer bg-white">
+    <nav><ul class="pagination pagination-sm mb-0 justify-content-center">
+      {% if employees.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ employees.previous_page_number }}&q={{ query }}&role={{ role_filter }}&status={{ status_filter }}">‹</a></li>{% endif %}
+      <li class="page-item disabled"><a class="page-link">Page {{ employees.number }} of {{ employees.paginator.num_pages }}</a></li>
+      {% if employees.has_next %}<li class="page-item"><a class="page-link" href="?page={{ employees.next_page_number }}&q={{ query }}&role={{ role_filter }}&status={{ status_filter }}">›</a></li>{% endif %}
+    </ul></nav>
+  </div>
+  {% endif %}
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let timeout = null;
+function autoSubmit() {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {
+        document.getElementById('filterForm').submit();
+    }, 500); // Wait 500ms after user stops typing
+}
+
+// Restore focus strictly to the text input if a search query is active
+document.addEventListener("DOMContentLoaded", () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('q')) {
+        const queryInput = document.querySelector('input[name="q"]');
+        if (queryInput) {
+            queryInput.focus();
+            const val = queryInput.value;
+            queryInput.value = '';
+            queryInput.value = val; // Move cursor to the end
+        }
+    }
+});
+</script>
+{% endblock %}

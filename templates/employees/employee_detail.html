@@ -1,0 +1,357 @@
+{% extends 'base.html' %}
+{% block title %}{{ employee.name }}{% endblock %}
+{% block page_title %}Employee Profile{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+<style>
+  .cropper-container-wrapper { max-height: 400px; width: 100%; background-color: #000; }
+  #imageToCrop { max-width: 100%; display: block; }
+  /* Circular Cropper Preview */
+  .cropper-view-box, .cropper-face { border-radius: 50%; }
+  .cropper-view-box { outline: 0; box-shadow: 0 0 0 1px #10b981; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <button onclick="history.back()" class="btn btn-sm btn-light border shadow-sm fw-600 text-muted px-3"><i class="bi bi-arrow-left me-2"></i>Back</button>
+</div>
+<div class="row g-3">
+  {% if employee.status == 'inactive' and not request.user.can_manage %}
+  <div class="col-12">
+    <div class="alert alert-danger text-center shadow-sm py-5">
+      <i class="bi bi-x-circle text-danger mb-3" style="font-size: 3rem; display:block;"></i>
+      <h4 class="alert-heading fw-bold">Account Deactivated</h4>
+      <p class="mb-0 fs-5">Your profile is currently deactivated. Please contact your admin to restore access.</p>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12 col-md-4">
+    <div class="card mb-3">
+      <div class="card-body text-center py-4">
+        {% if employee.profile_pic %}
+        <div class="mb-3 d-inline-block position-relative group">
+          <img src="{{ employee.profile_pic.url }}" alt="{{ employee.name }}" class="rounded-circle object-fit-cover shadow border border-3 border-white" style="width:110px; height:110px;">
+          {% if request.user.can_manage or request.user.employee.id == employee.id %}
+          <div class="dropdown position-absolute bottom-0 end-0" style="transform: translate(5%, 5%); z-index: 10;">
+            <button class="btn btn-primary rounded-circle shadow-sm border border-2 border-white" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'" title="Photo Options">
+              <i class="bi bi-camera-fill text-white" style="font-size: 1rem;"></i>
+            </button>
+            <ul class="dropdown-menu shadow border-0" style="min-width: 150px;">
+              <li><a class="dropdown-item fw-500" href="#" onclick="document.getElementById('profilePicInput').click(); return false;"><i class="bi bi-image me-2 text-primary"></i>Change Photo</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <form method="POST" action="{% url 'employee_remove_photo' employee.pk %}" class="m-0">
+                  {% csrf_token %}
+                  <button type="submit" class="dropdown-item text-danger fw-500" onclick="return confirm('Remove your profile photo? This cannot be undone.')"><i class="bi bi-trash me-2"></i>Remove Photo</button>
+                </form>
+              </li>
+            </ul>
+          </div>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="mb-3 d-inline-block position-relative group">
+          <div class="rounded-circle bg-primary bg-gradient d-inline-flex align-items-center justify-content-center shadow border border-3 border-white" style="width:110px; height:110px;">
+            <span class="text-white fw-700 fs-1">{{ employee.name|first|upper }}</span>
+          </div>
+          {% if request.user.can_manage or request.user.employee.id == employee.id %}
+          <button class="btn btn-primary rounded-circle position-absolute bottom-0 end-0 shadow-sm border border-2 border-white" style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; z-index: 10; transform: translate(5%, 5%); transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);" onclick="document.getElementById('profilePicInput').click()" onmouseover="this.style.transform='translate(5%, 5%) scale(1.15)'" onmouseout="this.style.transform='translate(5%, 5%) scale(1)'" title="Upload Photo">
+            <i class="bi bi-upload text-white" style="font-size: 1rem;"></i>
+          </button>
+          {% endif %}
+        </div>
+        {% endif %}
+        
+        {% if request.user.can_manage or request.user.employee.id == employee.id %}
+        <form id="profilePicForm" class="d-none">
+          <input type="file" id="profilePicInput" name="profile_pic" accept="image/*">
+        </form>
+        {% endif %}
+        <h5 class="fw-700 mb-1">{{ employee.name }}</h5>
+        <span class="badge bg-light text-dark border mb-2">{{ employee.get_role_display }}</span><br>
+        {% if employee.status == 'active' %}
+        <span class="badge badge-active rounded-pill">Active</span>
+        {% else %}
+        <span class="badge badge-inactive rounded-pill">Inactive</span>
+        {% endif %}
+      </div>
+      <div class="card-body border-top">
+        <div class="row g-2 text-sm">
+          <div class="col-12"><i class="bi bi-telephone text-muted me-2"></i>{{ employee.phone }}</div>
+          <div class="col-12"><i class="bi bi-geo-alt text-muted me-2"></i>{{ employee.address }}</div>
+          <div class="col-12"><i class="bi bi-calendar text-muted me-2"></i>Joined {{ employee.joining_date }}</div>
+          <div class="col-12"><i class="bi bi-currency-rupee text-muted me-1"></i>₹{{ employee.daily_wage }}/day</div>
+          {% if employee.emergency_contact %}<div class="col-12"><i class="bi bi-telephone-plus text-muted me-2"></i>{{ employee.emergency_contact }}</div>{% endif %}
+        </div>
+      </div>
+      
+      {% if request.user.employee and request.user.employee.id == employee.id %}
+      <div class="card-footer bg-white border-top-0 pt-0 pb-3">
+        {% if already_marked_today %}
+        <button class="btn btn-success w-100 fw-600" disabled><i class="bi bi-check-circle-fill me-2"></i>Attendance Marked for Today!</button>
+        {% else %}
+        <a href="{% url 'mark_attendance' %}" class="btn btn-primary w-100 fw-600 shadow-sm"><i class="bi bi-pencil-square me-2"></i>Mark Today's Attendance</a>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% if user.role == 'admin' or user.is_superuser %}
+      <div class="card-footer bg-white d-flex flex-wrap gap-2">
+        <a href="{% url 'employee_edit' employee.pk %}" class="btn btn-primary btn-sm flex-fill"><i class="bi bi-pencil me-1"></i>Edit</a>
+        
+        <form method="POST" action="{% url 'employee_reset_password' employee.pk %}" class="d-inline flex-fill">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-secondary btn-sm w-100" onclick="return confirm('Reset password to password123 for {{ employee.name }}?')">
+            <i class="bi bi-key"></i> Reset PW
+          </button>
+        </form>
+
+        {% if employee.status == 'active' %}
+        <a href="{% url 'employee_delete' employee.pk %}" class="btn btn-outline-danger btn-sm" title="Deactivate"><i class="bi bi-person-x"></i> Deactivate</a>
+        {% else %}
+        <a href="{% url 'employee_delete' employee.pk %}" class="btn btn-outline-success btn-sm" title="Activate"><i class="bi bi-person-check"></i> Activate</a>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="fw-600">This Month's Summary</span></div>
+      <div class="card-body text-center">
+        <div class="fs-1 fw-700 text-success">₹{{ monthly_salary|floatformat:0 }}</div>
+        <div class="text-muted small">Salary for {{ today|date:"F Y" }}</div>
+        <hr>
+        <a href="{% url 'employee_payment_history' employee.pk %}" class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-receipt me-1"></i> View Payment Slips</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-8">
+    <div class="card mb-3">
+      <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span class="fw-600"><i class="bi bi-building me-2 text-primary"></i>Site Assignments</span>
+        {% if user.can_manage %}
+        <a href="{% url 'site_list' %}" class="btn btn-sm btn-outline-primary">Manage Sites</a>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        <!-- Desktop Table -->
+        <div class="table-responsive d-none d-md-block">
+          <table class="table table-hover mb-0">
+            <thead class="table-light"><tr><th>Site</th><th>Location</th><th>Assigned</th><th>Active</th></tr></thead>
+            <tbody>
+              {% for a in assignments %}
+              <tr>
+                <td class="fw-500"><a href="{% url 'site_detail' a.site.pk %}" class="text-decoration-none">{{ a.site.name }}</a></td>
+                <td class="text-muted small">{{ a.site.location }}</td>
+                <td class="small">{{ a.assigned_date }}</td>
+                <td>{% if a.is_active %}<span class="badge badge-active">Yes</span>{% else %}<span class="badge badge-inactive">No</span>{% endif %}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" class="text-center text-muted py-3">Not assigned to any site yet</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <!-- Mobile Cards -->
+        <div class="d-md-none p-2 bg-light">
+          {% for a in assignments %}
+          <div class="card border-0 shadow-sm mb-2">
+            <div class="card-body p-3">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <a href="{% url 'site_detail' a.site.pk %}" class="text-decoration-none fw-700 text-dark">{{ a.site.name }}</a>
+                {% if a.is_active %}<span class="badge badge-active">Active</span>{% else %}<span class="badge badge-inactive">Inactive</span>{% endif %}
+              </div>
+              <div class="small text-muted mb-1"><i class="bi bi-geo-alt me-1"></i>{{ a.site.location }}</div>
+              <div class="small text-muted"><i class="bi bi-calendar me-1"></i>Assigned: {{ a.assigned_date }}</div>
+            </div>
+          </div>
+          {% empty %}
+          <div class="text-center text-muted py-3">Not assigned to any site yet</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span class="fw-600"><i class="bi bi-calendar-check me-2 text-primary"></i>Recent Attendance</span>
+        <a href="{% url 'employee_attendance' employee.pk %}" class="btn btn-sm btn-outline-primary">Full History</a>
+      </div>
+      <div class="card-body p-0">
+        <!-- Desktop Table -->
+        <div class="table-responsive d-none d-md-block">
+          <table class="table table-hover mb-0">
+            <thead class="table-light"><tr><th>Date</th><th>Status</th><th>Site</th><th>Notes</th></tr></thead>
+            <tbody>
+              {% for att in recent_attendance %}
+              <tr>
+                <td class="small fw-500">{{ att.date }}<div class="text-muted" style="font-size:0.7rem;">{{ att.created_at|time:"h:i A" }}</div></td>
+                <td>
+                  {% if att.status == 'present' %}<span class="badge badge-present rounded-pill">Present</span>
+                  {% elif att.status == 'absent' %}<span class="badge badge-absent rounded-pill">Absent</span>
+                  {% elif att.status == 'half_day' %}<span class="badge badge-half_day rounded-pill">Half Day</span>
+                  {% else %}<span class="badge bg-light text-dark">{{ att.get_status_display }}</span>{% endif %}
+                </td>
+                <td class="text-muted small">{{ att.site.name|default:"—" }}</td>
+                <td class="text-muted small">{{ att.notes|default:"—" }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" class="text-center text-muted py-3">No attendance records</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <!-- Mobile Cards -->
+        <div class="d-md-none p-2 bg-light">
+          {% for att in recent_attendance %}
+          <div class="card border-0 shadow-sm mb-2">
+            <div class="card-body p-3">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                  <div class="fw-700 text-dark">{{ att.date }}</div>
+                  <div class="text-muted" style="font-size:0.75rem;">{{ att.created_at|time:"h:i A" }}</div>
+                </div>
+                <div>
+                  {% if att.status == 'present' %}<span class="badge badge-present rounded-pill">Present</span>
+                  {% elif att.status == 'absent' %}<span class="badge badge-absent rounded-pill">Absent</span>
+                  {% elif att.status == 'half_day' %}<span class="badge badge-half_day rounded-pill">Half Day</span>
+                  {% else %}<span class="badge bg-light text-dark">{{ att.get_status_display }}</span>{% endif %}
+                </div>
+              </div>
+              <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
+                <span class="small text-muted"><i class="bi bi-building me-1"></i>{{ att.site.name|default:"No Site" }}</span>
+                {% if att.notes %}<span class="small text-muted"><i class="bi bi-journal-text me-1"></i>{{ att.notes|truncatechars:15 }}</span>{% endif %}
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <div class="text-center text-muted py-3">No attendance records</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Crop Modal -->
+<div class="modal fade" id="cropModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold">Crop Profile Photo</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center p-4">
+        <div class="cropper-container-wrapper mb-3 bg-light rounded d-flex align-items-center justify-content-center overflow-hidden">
+          <img id="imageToCrop" src="" alt="Picture to crop">
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="cropAndUploadBtn">Crop & Upload</button>
+      </div>
+    </div>
+  </div>
+{% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+<script>
+  let cropper;
+  const imageInput = document.getElementById('profilePicInput');
+  const imageToCrop = document.getElementById('imageToCrop');
+  
+  if (imageInput) {
+    const cropModal = new bootstrap.Modal(document.getElementById('cropModal'));
+    
+    // When a file is selected
+    imageInput.addEventListener('change', function (e) {
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        const file = files[0];
+        // Only process image files
+        if (!file.type.startsWith('image/')) return;
+        
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          // Destroy old cropper if exists
+          if (cropper) cropper.destroy();
+          
+          imageToCrop.src = event.target.result;
+          cropModal.show();
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Initialize Cropper when modal is fully shown
+    document.getElementById('cropModal').addEventListener('shown.bs.modal', function () {
+      cropper = new Cropper(imageToCrop, {
+        aspectRatio: 1, // Square crop for profile pic
+        viewMode: 1,
+        dragMode: 'move',
+        autoCropArea: 1,
+        restore: false,
+        guides: true,
+        center: true,
+        highlight: false,
+        cropBoxMovable: true,
+        cropBoxResizable: true,
+        toggleDragModeOnDblclick: false,
+      });
+    });
+
+    // Handle the crop and upload
+    document.getElementById('cropAndUploadBtn').addEventListener('click', function() {
+      if (!cropper) return;
+      
+      const btn = this;
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...';
+      btn.disabled = true;
+
+      cropper.getCroppedCanvas({
+        width: 400,
+        height: 400,
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high',
+      }).toBlob((blob) => {
+        const formData = new FormData();
+        // 'profile.jpg' is arbitrary name. The backend handles it based on form field.
+        formData.append('profile_pic', blob, 'profile.jpg');
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        fetch("{% url 'employee_update_photo' employee.pk %}", {
+          method: 'POST',
+          body: formData,
+        })
+        .then(response => {
+          if(response.ok) {
+            window.location.reload();
+          } else {
+            alert('Upload failed. Please try again.');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('Upload failed. Please try again.');
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+        });
+      }, 'image/jpeg', 0.9);
+    });
+    
+    // Clean up on modal hide
+    document.getElementById('cropModal').addEventListener('hidden.bs.modal', function () {
+      if (cropper) {
+        cropper.destroy();
+        cropper = null;
+      }
+      imageInput.value = ''; // Reset input so same file can be selected again
+    });
+  }
+</script>
+{% endblock %}

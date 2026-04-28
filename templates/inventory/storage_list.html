@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block title %}Storage Facilities{% endblock %}
+{% block page_title %}Storage & Inventory Management{% endblock %}
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+  <div>
+    <h4 class="mb-1 fw-700">Storage Facilities</h4>
+    <p class="text-muted small mb-0">Manage manufacturing hubs and stock locations</p>
+  </div>
+  {% if user.role == 'admin' or user.is_superuser %}
+  <a href="{% url 'storage_add' %}" class="btn btn-primary w-100 w-md-auto shadow-sm">
+    <i class="bi bi-plus-lg me-2"></i>Add Storage
+  </a>
+  {% endif %}
+</div>
+
+<div class="row g-3">
+  {% for storage in storages %}
+  <div class="col-12 col-md-6 col-lg-4">
+    <div class="card h-100 border-0 shadow-sm">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div class="rounded p-2" style="background:#e8f0fe; color:#1e3a5f;">
+            <i class="bi bi-box-seam fs-4"></i>
+          </div>
+          <span class="badge bg-light text-dark border">{{ storage.total_items_types }} Item Types</span>
+        </div>
+        
+        <h5 class="fw-700 mb-1">{{ storage.name }}</h5>
+        <div class="text-muted small mb-3">
+          <i class="bi bi-geo-alt me-1"></i>{{ storage.location }}
+        </div>
+        
+        <div class="border-top pt-3 mt-3">
+          <div class="small text-muted mb-1">Storage Manager</div>
+          <div class="d-flex align-items-center gap-2">
+            <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white" style="width:28px; height:28px; font-size:0.75rem;">
+              {{ storage.manager.name|first|upper|default:"?" }}
+            </div>
+            <span class="fw-500">{{ storage.manager.name|default:"Not Assigned" }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer bg-transparent border-top-0 pt-0 pb-3">
+        <div class="d-flex gap-2">
+          <a href="{% url 'storage_detail' storage.pk %}" class="btn btn-primary flex-fill fw-600">Manage Stock</a>
+          {% if user.role == 'admin' or user.is_superuser %}
+          <a href="{% url 'storage_edit' storage.pk %}" class="btn btn-light text-muted px-3" title="Edit Storage"><i class="bi bi-pencil"></i></a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body text-center py-5 text-muted">
+        <i class="bi bi-box-seam fs-1 d-block mb-3 text-secondary"></i>
+        <h5 class="fw-600 text-dark">No Storage Facilities Found</h5>
+        <p>Create your first storage space to start tracking manufactured sheets and materials.</p>
+        {% if user.role == 'admin' or user.is_superuser %}
+        <a href="{% url 'storage_add' %}" class="btn btn-primary mt-2">Add Storage</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

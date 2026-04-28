@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Work Sites{% endblock %}
+{% block page_title %}Work Site Management{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div><h5 class="mb-0 fw-700">Work Sites</h5><small class="text-muted">Manage POP work locations</small></div>
+  {% if user.can_manage %}
+  <a href="{% url 'site_add' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add Site</a>
+  {% endif %}
+</div>
+<div class="card mb-3"><div class="card-body py-2">
+  <form method="get" class="row g-2 align-items-end">
+    <div class="col-12 col-md-5"><input type="text" name="q" class="form-control form-control-sm" placeholder="Search site name or location…" value="{{ q }}"></div>
+    <div class="col-6 col-md-2">
+      <select name="status" class="form-select form-select-sm">
+        <option value="">All Status</option>
+        {% for val,label in status_choices %}<option value="{{ val }}" {% if status == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-auto"><button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Search</button></div>
+    <div class="col-auto"><a href="{% url 'site_list' %}" class="btn btn-light btn-sm">Reset</a></div>
+  </form>
+</div></div>
+
+<div class="row g-3">
+  {% for site in sites %}
+  <div class="col-12 col-md-6 col-lg-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div class="rounded p-2 me-2" style="background:#e8f0fe;color:#1e3a5f;"><i class="bi bi-building fs-5"></i></div>
+          {% if site.status == 'active' %}<span class="badge badge-active rounded-pill">Active</span>
+          {% elif site.status == 'completed' %}<span class="badge bg-light text-dark border rounded-pill">Completed</span>
+          {% else %}<span class="badge" style="background:#fff3e0;color:#e65100;">On Hold</span>{% endif %}
+        </div>
+        <h6 class="fw-700 mb-1">{{ site.name }}</h6>
+        <div class="text-muted small mb-2"><i class="bi bi-geo-alt me-1"></i>{{ site.location }}</div>
+        {% if site.square_feet %}<div class="small mb-1"><i class="bi bi-aspect-ratio me-1 text-muted"></i>{{ site.square_feet }} sq ft</div>{% endif %}
+        <div class="small text-muted"><i class="bi bi-calendar me-1"></i>Started: {{ site.start_date }}</div>
+        {% if site.client_name %}<div class="small text-muted mt-1 mb-3"><i class="bi bi-person me-1"></i>{{ site.client_name }}</div>{% endif %}
+        
+        <div class="mt-auto pt-3 border-top">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <small class="fw-600 text-muted" style="font-size: 0.7rem; text-transform: uppercase;">Overall Progress</small>
+            <small class="fw-700 text-primary">{{ site.get_overall_progress }}%</small>
+          </div>
+          <div class="progress" style="height: 6px;">
+            <div class="progress-bar bg-primary" style="width: {{ site.get_overall_progress }}%;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer bg-white d-flex gap-2">
+        <a href="{% url 'site_detail' site.pk %}" class="btn btn-sm btn-primary flex-fill">View Details</a>
+        {% if user.role == 'admin' or user.is_superuser %}
+        <a href="{% url 'site_edit' site.pk %}" class="btn btn-sm btn-light"><i class="bi bi-pencil"></i></a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12"><div class="card"><div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-building fs-1 d-block mb-2"></i>No work sites found. <a href="{% url 'site_add' %}">Add your first site.</a>
+  </div></div></div>
+  {% endfor %}
+</div>
+
+{% if sites.has_other_pages %}
+<nav class="mt-3"><ul class="pagination pagination-sm justify-content-center">
+  {% if sites.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ sites.previous_page_number }}&q={{ q }}&status={{ status }}">‹</a></li>{% endif %}
+  <li class="page-item disabled"><a class="page-link">{{ sites.number }} / {{ sites.paginator.num_pages }}</a></li>
+  {% if sites.has_next %}<li class="page-item"><a class="page-link" href="?page={{ sites.next_page_number }}&q={{ q }}&status={{ status }}">›</a></li>{% endif %}
+</ul></nav>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+{% block title %}Mark Attendance{% endblock %}
+{% block page_title %}Mark Attendance{% endblock %}
+{% block content %}
+{% if user.can_manage %}
+<div class="card mb-3"><div class="card-body py-2">
+  <form method="get" class="row g-2 align-items-end">
+    <div class="col-6 col-md-3"><label class="form-label form-label-sm mb-1">Date</label>
+      <input type="date" name="date" class="form-control form-control-sm" value="{{ date }}" onchange="this.form.submit()">
+    </div>
+    <div class="col-6 col-md-4"><label class="form-label form-label-sm mb-1">Filter by Site</label>
+      <select name="site" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="">All Active Employees</option>
+        {% for s in sites %}<option value="{{ s.pk }}" {% if site and site.pk == s.pk %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-auto"><noscript><button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-filter me-1"></i>Load</button></noscript></div>
+  </form>
+</div></div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span class="fw-600"><i class="bi bi-calendar-check text-primary me-2"></i>
+      Mark Attendance for {{ date }}{% if site %} – {{ site.name }}{% endif %}
+    </span>
+    <span class="badge bg-light text-dark border">{{ employees|length }} employees</span>
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="date" value="{{ date }}">
+    {% if already_marked %}
+    <div class="alert alert-success m-3">
+      <i class="bi bi-clock-history me-2"></i>You have already marked your attendance today! ("One Day, One Attendance"). Please contact the administrator if you need to modify your submission.
+    </div>
+    {% endif %}
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Employee</th>
+              <th style="min-width: 130px;">Attendance</th>
+              <th style="min-width: 140px;">Site</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for emp in employees %}
+            {% with existing|default_if_none:None as _ %}
+            <tr id="row_{{ emp.id }}" data-role="{{ emp.role }}">
+              <td>
+                <div class="d-flex align-items-center">
+                  {% if emp.profile_pic %}
+                  <img src="{{ emp.profile_pic.url }}" alt="{{ emp.name }}" class="rounded-circle object-fit-cover me-3 shadow-sm" style="width: 42px; height: 42px;">
+                  {% else %}
+                  <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold me-3 shadow-sm" style="width: 42px; height: 42px; font-size: 1.1rem;">
+                    {{ emp.name|first|upper }}
+                  </div>
+                  {% endif %}
+                  <div id="name_div_{{ emp.id }}">
+                    <a href="{% url 'employee_detail' emp.pk %}" class="text-decoration-none fw-700 text-dark d-block mb-1" style="line-height: 1;">{{ emp.name }}</a>
+                    <span class="text-muted fw-600" style="font-size: 0.75rem;">{{ emp.get_role_display }}</span>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="position-relative">
+                  <select name="status_{{ emp.id }}" id="status_{{ emp.id }}" class="form-select form-select-sm fw-600 shadow-sm" {% if already_marked %}disabled{% endif %}>
+                    <option value="" selected>-- Not Marked --</option>
+                    <option value="present">Present</option>
+                    <option value="absent">Absent</option>
+                    <option value="half_day">Half Day</option>
+                    <option value="1_5_days">1.5 Days</option>
+                  </select>
+                </div>
+              </td>
+              <td>
+                <div class="position-relative">
+                  <select name="site_{{ emp.id }}" class="form-select form-select-sm shadow-sm" style="min-width: 140px; max-width: 180px;" {% if already_marked %}disabled{% endif %}>
+                    <option value="">-- No Site --</option>
+                    {% for s in sites %}<option value="{{ s.pk }}">{{ s.name }}</option>{% endfor %}
+                  </select>
+                </div>
+              </td>
+              </td>
+            </tr>
+            {% endwith %}
+            {% empty %}
+            <tr><td colspan="7" class="text-center py-4 text-muted">No employees to show. Select a site or add employees.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% if employees %}
+    <div class="card-footer bg-white">
+      <div class="d-flex gap-2">
+        {% if not already_marked %}
+        <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Save Attendance</button>
+        {% endif %}
+        <a href="{% url 'attendance_list' %}" class="btn btn-light">{% if already_marked %}Back to List{% else %}Cancel{% endif %}</a>
+      </div>
+    </div>
+    {% endif %}
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Pre-fill existing attendance
+const existing = {
+  {% for emp_id, att in existing.items %}
+  "{{ emp_id }}": {
+    status: "{{ att.status }}",
+    siteId: "{{ att.site_id|default_if_none:'' }}"
+  },
+  {% endfor %}
+};
+document.addEventListener('DOMContentLoaded', () => {
+  const tbody = document.querySelector('table tbody');
+  if (!tbody) return;
+  const rows = Array.from(tbody.querySelectorAll('tr[id^="row_"]'));
+
+  rows.forEach(row => {
+    const empId = row.id.split('_')[1];
+    const data = existing[empId];
+    
+    if (data) {
+      // --- Employee is ALREADY marked ---
+      row.setAttribute('data-marked', '1');
+      
+      const statusSelect = document.getElementById(`status_${empId}`);
+      if (statusSelect) {
+        statusSelect.value = data.status;
+        statusSelect.disabled = true;
+      }
+      
+      const siteSelect = document.querySelector(`select[name="site_${empId}"]`);
+      if (siteSelect) {
+        if (data.siteId) siteSelect.value = data.siteId;
+        siteSelect.disabled = true;
+      }
+
+      // Add visual badge
+      const nameDiv = document.getElementById(`name_div_${empId}`);
+      if (nameDiv) {
+        nameDiv.insertAdjacentHTML('beforeend', '<span class="badge bg-light text-success border border-success mt-1" style="font-size:0.65rem;"><i class="bi bi-check-circle-fill me-1"></i>Saved</span>');
+      }
+
+      // Subtly fade the row
+      row.style.backgroundColor = '#f8f9fa';
+      row.style.opacity = '0.75';
+      
+    } else {
+      // --- Employee is NOT marked yet ---
+      row.setAttribute('data-marked', '0');
+      
+      const siteSelect = document.querySelector(`select[name="site_${empId}"]`);
+      const statusSelect = document.getElementById(`status_${empId}`);
+      
+      const empRole = row.getAttribute('data-role');
+      
+      if (siteSelect && statusSelect) {
+        // Enforce required site conditionally
+        statusSelect.addEventListener('change', function() {
+          if (empRole === 'driver') {
+            siteSelect.required = false;
+            siteSelect.classList.remove('border-danger');
+          } else if (this.value === 'present' || this.value === 'half_day' || this.value === '1_5_days') {
+            siteSelect.required = true;
+          } else {
+            siteSelect.required = false;
+            siteSelect.classList.remove('border-danger');
+          }
+        });
+        
+        // Add visual indicator if they try to submit without site
+        siteSelect.addEventListener('invalid', function() {
+          this.classList.add('border-danger');
+        });
+        siteSelect.addEventListener('change', function() {
+          this.classList.remove('border-danger');
+        });
+        
+        // Trigger initial state
+        statusSelect.dispatchEvent(new Event('change'));
+      }
+    }
+  });
+
+  // Sort rows: Not Marked (0) come first, Marked (1) go to the bottom
+  rows.sort((a, b) => {
+    return parseInt(a.getAttribute('data-marked')) - parseInt(b.getAttribute('data-marked'));
+  });
+
+  // Re-append sorted rows to DOM
+  rows.forEach(row => tbody.appendChild(row));
+});
+</script>
+{% endblock %}

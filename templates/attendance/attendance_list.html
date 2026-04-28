@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% block title %}Attendance{% endblock %}
+{% block page_title %}Attendance Records{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div><h5 class="mb-0 fw-700">Attendance</h5><small class="text-muted">Daily work records</small></div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'download_attendance_pdf' %}?date={{ date_filter }}&month={{ month_filter }}&site={{ site_filter }}&employee={{ emp_filter }}" class="btn btn-outline-danger fw-600"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+    {% if not user.is_accountant %}
+    <a href="{% url 'mark_attendance' %}" class="btn btn-primary"><i class="bi bi-pencil-square me-1"></i>Mark Attendance</a>
+    {% endif %}
+    {% if user.is_admin %}
+    <a href="{% url 'attendance_add' %}" class="btn btn-outline-primary"><i class="bi bi-plus-lg me-1"></i>Add Single</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card shadow-sm border-0">
+  <div class="card-header bg-transparent border-bottom-0 pt-4 pb-2 px-4">
+    <form id="filterForm" method="get" class="row g-3 align-items-center">
+      <div class="col-6 col-md-3">
+        <label class="form-label form-label-sm mb-1 fw-500 small text-muted">{% if user.can_manage %}Date{% else %}Month{% endif %}</label>
+        {% if user.can_manage %}
+        <input type="date" name="date" class="form-control form-control-sm" value="{{ date_filter }}" onchange="this.form.submit()">
+        {% else %}
+        <input type="month" name="month" class="form-control form-control-sm" value="{{ month_filter }}" onchange="this.form.submit()">
+        {% endif %}
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label form-label-sm mb-1 fw-500 small text-muted">Site</label>
+        <select name="site" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">All Sites</option>
+          {% for s in sites %}<option value="{{ s.pk }}" {% if site_filter == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
+        </select>
+      </div>
+      {% if user.can_manage %}
+      <div class="col-8 col-md-3">
+        <label class="form-label form-label-sm mb-1 fw-500 small text-muted">Employee</label>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+          <input type="text" name="employee" class="form-control form-control-sm border-start-0 ps-0" placeholder="Name…" value="{{ emp_filter }}" oninput="autoSubmit()">
+        </div>
+      </div>
+      {% endif %}
+      <div class="col-4 col-md-3 d-flex gap-1 align-items-end mt-auto mb-1">
+        <noscript><button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search"></i></button></noscript>
+        <a href="{% url 'attendance_list' %}" class="btn btn-light btn-sm text-muted">Reset</a>
+      </div>
+    </form>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr><th>Date</th>{% if user.can_manage %}<th>Employee</th>{% endif %}<th>Status</th><th class="d-none d-md-table-cell">Site</th>{% if user.can_manage %}<th>Actions</th>{% endif %}</tr>
+        </thead>
+        <tbody>
+          {% for r in records %}
+          <tr>
+            <td class="small fw-500">{{ r.date }}<div class="text-muted" style="font-size:0.7rem;">{{ r.created_at|time:"h:i A" }}</div></td>
+            {% if user.can_manage %}
+            <td>
+              <div class="d-flex align-items-center">
+                {% if r.employee.profile_pic %}
+                <img src="{{ r.employee.profile_pic.url }}" alt="{{ r.employee.name }}" class="rounded-circle object-fit-cover me-3 shadow-sm" style="width: 42px; height: 42px;">
+                {% else %}
+                <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold me-3 shadow-sm" style="width: 42px; height: 42px; font-size: 1.1rem;">
+                  {{ r.employee.name|first|upper }}
+                </div>
+                {% endif %}
+                <div>
+                  <a href="{% url 'employee_detail' r.employee.pk %}" class="text-decoration-none fw-700 text-dark d-block mb-1" style="line-height: 1;">{{ r.employee.name }}</a>
+                  <span class="text-muted fw-600" style="font-size: 0.75rem;">{{ r.employee.get_role_display }}</span>
+                </div>
+              </div>
+            </td>
+            {% endif %}
+            <td>
+              {% if r.status == 'present' %}<span class="badge badge-present rounded-pill">Present</span>
+              {% elif r.status == 'absent' %}<span class="badge badge-absent rounded-pill">Absent</span>
+              {% elif r.status == 'half_day' %}<span class="badge badge-half_day rounded-pill">Half Day</span>
+              {% else %}<span class="badge bg-light text-dark">{{ r.get_status_display }}</span>{% endif %}
+            </td>
+            <td class="text-muted small d-none d-md-table-cell">{{ r.site.name|default:"—" }}</td>
+            {% if user.can_manage %}
+            <td>
+              {% if user.is_admin %}
+              <div class="d-flex gap-1">
+                <a href="{% url 'attendance_edit' r.pk %}" class="btn btn-sm btn-light"><i class="bi bi-pencil"></i></a>
+                <a href="{% url 'attendance_delete' r.pk %}" class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></a>
+              </div>
+              {% else %}
+              <span class="text-muted small">—</span>
+              {% endif %}
+            </td>
+            {% endif %}
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="text-center py-4 text-muted">No attendance records found for this filter.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% if records.has_other_pages %}
+  <div class="card-footer bg-white">
+    <nav><ul class="pagination pagination-sm mb-0 justify-content-center">
+      {% if records.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ records.previous_page_number }}&date={{ date_filter }}&month={{ month_filter }}&site={{ site_filter }}&employee={{ emp_filter }}">‹</a></li>{% endif %}
+      <li class="page-item disabled"><a class="page-link">{{ records.number }}/{{ records.paginator.num_pages }}</a></li>
+      {% if records.has_next %}<li class="page-item"><a class="page-link" href="?page={{ records.next_page_number }}&date={{ date_filter }}&month={{ month_filter }}&site={{ site_filter }}&employee={{ emp_filter }}">›</a></li>{% endif %}
+    </ul></nav>
+  </div>
+  {% endif %}
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let timeout = null;
+function autoSubmit() {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {
+        document.getElementById('filterForm').submit();
+    }, 500); // Wait 500ms after user stops typing
+}
+
+// Restore focus strictly to the text input if a search query is active
+document.addEventListener("DOMContentLoaded", () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('employee')) {
+        const queryInput = document.querySelector('input[name="employee"]');
+        if (queryInput) {
+            queryInput.focus();
+            const val = queryInput.value;
+            queryInput.value = '';
+            queryInput.value = val; // Move cursor to the end
+        }
+    }
+});
+</script>
+{% endblock %}

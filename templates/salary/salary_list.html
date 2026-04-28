@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+{% block title %}Salary{% endblock %}
+{% block page_title %}Salary Management{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+  <div>
+    <h4 class="fw-800 mb-1">Weekly Salary</h4>
+    <p class="text-muted mb-0 fw-500">Manage payroll for <strong class="text-dark">{{ start_date|date:"M d" }} - {{ end_date|date:"M d, Y" }}</strong></p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'download_salary_report' %}?end_date={{ end_date|date:'Y-m-d' }}" class="btn btn-outline-primary fw-600 shadow-sm"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Export CSV</a>
+    <a href="{% url 'download_salary_pdf' %}?end_date={{ end_date|date:'Y-m-d' }}" class="btn btn-primary fw-600 shadow-sm"><i class="bi bi-file-earmark-pdf me-1"></i>Export PDF</a>
+  </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card p-3 h-100 d-flex flex-column justify-content-center">
+      <div class="stat-label mb-1">Total Employees</div>
+      <div class="stat-value fs-3">{{ total_employees }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card p-3 h-100 d-flex flex-column justify-content-center border-start border-4 border-primary border-top-0 border-bottom-0 border-end-0">
+      <div class="stat-label mb-1">Total Net Payable</div>
+      <div class="stat-value fs-3 text-dark">₹{{ total|floatformat:0 }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card p-3 h-100 d-flex flex-column justify-content-center border-start border-4 border-success border-top-0 border-bottom-0 border-end-0">
+      <div class="stat-label mb-1">Total Paid</div>
+      <div class="stat-value fs-3 text-success">₹{{ total_paid|floatformat:0 }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card p-3 h-100 d-flex flex-column justify-content-center border-start border-4 border-danger border-top-0 border-bottom-0 border-end-0">
+      <div class="stat-label mb-1">Total Pending</div>
+      <div class="stat-value fs-3 text-danger">₹{{ total_pending|floatformat:0 }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0">
+  <div class="card-header bg-transparent border-bottom-0 pt-4 pb-2 px-4">
+    <form method="get" class="row g-3 align-items-end mb-2">
+      <div class="col-6 col-md-3">
+        <label class="form-label form-label-sm mb-1 fw-600 small text-uppercase" style="letter-spacing: 0.5px;">Year</label>
+        <select name="year" class="form-select" onchange="this.form.submit()" style="border-radius: 10px;">
+          {% for y in years %}
+          <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-4">
+        <label class="form-label form-label-sm mb-1 fw-600 small text-uppercase" style="letter-spacing: 0.5px;">Month</label>
+        <select name="month" class="form-select" onchange="this.form.submit()" style="border-radius: 10px;">
+          {% for m in months %}
+          <option value="{{ m.value }}" {% if selected_month == m.value %}selected{% endif %}>{{ m.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-5">
+        <label class="form-label form-label-sm mb-1 fw-600 small text-uppercase" style="letter-spacing: 0.5px;">Week</label>
+        <select name="week" class="form-select" onchange="this.form.submit()" style="border-radius: 10px;">
+          {% for w in weeks %}
+          <option value="{{ w.week_num }}" {% if selected_week == w.week_num %}selected{% endif %}>
+            {{ w.label }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+  </div>
+    <div class="table-responsive d-none d-lg-block">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr><th>Employee</th><th class="text-center d-none d-md-table-cell">Days</th><th class="d-none d-lg-table-cell">Daily Wage</th><th class="d-none d-md-table-cell">Gross</th><th>Net Payable</th><th>Payment & Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          {% for s in summaries %}
+          <tr>
+            <td>
+              <div class="d-flex align-items-center">
+                <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center text-primary fw-bold me-2" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                  {{ s.employee.name|slice:":2"|upper }}
+                </div>
+                <div>
+                  <a href="{% url 'employee_detail' s.employee.pk %}" class="text-decoration-none fw-600 text-dark">{{ s.employee.name }}</a>
+                  <div class="small text-muted" style="font-size: 0.75rem;">{{ s.employee.get_role_display }}</div>
+                </div>
+              </div>
+            </td>
+            <td class="text-center d-none d-md-table-cell">
+              <span class="badge bg-light text-dark border">{{ s.working_days }} Days</span>
+            </td>
+            <td class="text-muted fw-500 d-none d-lg-table-cell">₹{{ s.daily_wage|floatformat:0 }}</td>
+            <td class="fw-600 d-none d-md-table-cell">₹{{ s.gross_salary|floatformat:0 }}</td>
+            <td class="fw-700">₹{{ s.net_payable|floatformat:0 }}</td>
+            <td style="width: 260px;">
+              <div class="d-flex justify-content-between align-items-end mb-1" style="font-size: 0.75rem;">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="fw-700 text-uppercase {% if s.pending_amount <= 0 and s.net_payable > 0 %}text-success{% else %}text-danger{% endif %}" style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                    {% if s.pending_amount <= 0 and s.net_payable > 0 %}Fully Paid{% elif s.total_paid > 0 %}Partial{% else %}Unpaid{% endif %}
+                  </span>
+                </div>
+                <span class="fw-700 text-dark">₹{{ s.total_paid|floatformat:0 }} / ₹{{ s.net_payable|floatformat:0 }}</span>
+              </div>
+              <div class="progress" style="height: 6px;">
+                {% widthratio s.total_paid s.net_payable 100 as pct %}
+                <div class="progress-bar {% if s.pending_amount <= 0 and s.net_payable > 0 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" style="width: {% if s.net_payable > 0 %}{{ pct|default:0 }}{% else %}0{% endif %}%"></div>
+              </div>
+            </td>
+            <td>
+              <div class="d-flex gap-1">
+                {% if s.pending_amount > 0 %}
+                <a href="{% url 'payment_add' %}?summary_id={{ s.pk }}" class="btn btn-sm btn-success shadow-sm" title="Record Payment"><i class="bi bi-currency-rupee"></i> Pay</a>
+                {% endif %}
+                <a href="{% url 'salary_edit' s.pk %}" class="btn btn-sm btn-light border shadow-sm" title="Edit/Finalize"><i class="bi bi-pencil"></i></a>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="10" class="text-center py-5 text-muted"><i class="bi bi-clipboard-data d-block fs-1 mb-2 opacity-50"></i>No salary data available for this week.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>    </div>
+
+    <!-- Mobile Card Layout -->
+    <div class="d-lg-none p-3 bg-light">
+      {% for s in summaries %}
+      <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center mb-3">
+            {% if s.employee.profile_pic %}
+            <img src="{{ s.employee.profile_pic.url }}" alt="{{ s.employee.name }}" class="rounded-circle object-fit-cover me-3 shadow-sm" style="width: 48px; height: 48px;">
+            {% else %}
+            <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold me-3 shadow-sm" style="width: 48px; height: 48px; font-size: 1.2rem;">
+              {{ s.employee.name|first|upper }}
+            </div>
+            {% endif %}
+            <div class="flex-grow-1">
+              <a href="{% url 'employee_detail' s.employee.pk %}" class="text-decoration-none fw-700 text-dark d-block mb-1 fs-5" style="line-height: 1.1;">{{ s.employee.name }}</a>
+              <span class="text-muted fw-600 small">{{ s.employee.get_role_display }}</span>
+            </div>
+            <div class="text-end">
+              <span class="badge bg-light text-dark border">{{ s.working_days }} Days</span>
+            </div>
+          </div>
+          
+          <div class="bg-light rounded-3 p-3 mb-3 border">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="text-muted small fw-600 text-uppercase">Net Payable</span>
+              <span class="fw-bold fs-5 text-dark">₹{{ s.net_payable|floatformat:0 }}</span>
+            </div>
+            
+            <div class="d-flex justify-content-between align-items-end mb-1" style="font-size: 0.8rem;">
+              <div class="d-flex align-items-center gap-2">
+                <span class="fw-700 text-uppercase {% if s.pending_amount <= 0 and s.net_payable > 0 %}text-success{% else %}text-danger{% endif %}" style="letter-spacing: 0.5px;">
+                  {% if s.pending_amount <= 0 and s.net_payable > 0 %}Fully Paid{% elif s.total_paid > 0 %}Partial{% else %}Unpaid{% endif %}
+                </span>
+              </div>
+              <span class="fw-700 text-dark">₹{{ s.total_paid|floatformat:0 }} / ₹{{ s.net_payable|floatformat:0 }}</span>
+            </div>
+            <div class="progress" style="height: 6px;">
+              {% widthratio s.total_paid s.net_payable 100 as pct %}
+              <div class="progress-bar {% if s.pending_amount <= 0 and s.net_payable > 0 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" style="width: {% if s.net_payable > 0 %}{{ pct|default:0 }}{% else %}0{% endif %}%"></div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            {% if s.pending_amount > 0 %}
+            <a href="{% url 'payment_add' %}?summary_id={{ s.pk }}" class="btn btn-sm btn-success flex-fill fw-600 shadow-sm"><i class="bi bi-currency-rupee"></i> Pay Now</a>
+            {% endif %}
+            <a href="{% url 'salary_edit' s.pk %}" class="btn btn-sm btn-light border flex-fill fw-600 shadow-sm"><i class="bi bi-pencil me-1"></i> Edit</a>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5 text-muted">
+          <i class="bi bi-clipboard-data d-block fs-1 mb-3 opacity-50"></i>
+          No salary data available for this week.
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

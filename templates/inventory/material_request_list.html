@@ -1,0 +1,320 @@
+{% extends 'base.html' %}
+{% block title %}Site Requests{% endblock %}
+{% block page_title %}Site Material Requests{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    {% if request.user.role == 'main_worker' %}
+      <h5 class="mb-0 fw-700">My Requests</h5>
+      <small class="text-muted">Status of materials requested for your sites</small>
+    {% else %}
+      <h5 class="mb-0 fw-700">Material Requests</h5>
+      <small class="text-muted">Items needed across various work sites</small>
+    {% endif %}
+  </div>
+  {% if request.user.role == 'main_worker' %}
+  <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#requestModal">
+    <i class="bi bi-plus-lg me-1"></i>Request Materials
+  </button>
+  {% endif %}
+</div>
+
+<!-- Filter Section -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body p-3">
+    <form method="GET" class="row gx-2 gy-2 align-items-center">
+      <div class="col-12 col-sm-5 col-md-4">
+        <select name="site" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">All Work Sites</option>
+          {% for site in sites %}
+            <option value="{{ site.id }}" {% if current_site == site.id|stringformat:"s" %}selected{% endif %}>{{ site.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-sm-4 col-md-3">
+        <input type="date" name="date" class="form-control form-control-sm" value="{{ current_date|default:'' }}" onchange="this.form.submit()">
+      </div>
+      {% if current_site or current_date %}
+      <div class="col-12 col-sm-auto">
+        <a href="{% url 'material_request_list' %}" class="btn btn-sm btn-outline-secondary w-100">Clear Filters</a>
+      </div>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+{% if request.user.role == 'main_worker' %}
+<!-- Request Material Modal -->
+<div class="modal fade" id="requestModal" tabindex="-1" aria-labelledby="requestModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-bottom-0 pt-4 pb-0">
+        <h5 class="modal-title fw-bold text-primary" id="requestModalLabel">New Material Request</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form method="POST" action="{% url 'material_request_list' %}">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label fw-600 text-muted small">Select Work Site</label>
+            {{ form.site }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600 text-muted small">Select Material/Item</label>
+            {{ form.item }}
+            <div class="form-text">Leave blank if your item is not in the list.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600 text-muted small">Or type Custom Item Name</label>
+            {{ form.custom_item_name }}
+            <div class="form-text text-warning">Only use this if the item is not in the dropdown above.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600 text-muted small">Required Quantity</label>
+            {{ form.quantity }}
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-600 text-muted small">Additional Notes</label>
+            {{ form.notes }}
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-fill fw-600">Submit Request</button>
+            <button type="button" class="btn btn-light px-4 text-muted fw-600" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="card border-0 shadow-sm d-none d-md-block">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Date</th>
+            <th>Work Site</th>
+            <th>Item & Quantity</th>
+            <th>Requested By</th>
+            <th>Notes</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for req in requests %}
+          <tr>
+            <td class="text-muted small">{{ req.created_at|date:"M d, Y" }}</td>
+            <td class="fw-600">{{ req.site.name }}</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <span class="fs-6 fw-700 text-dark">{{ req.quantity|floatformat:"-2" }} {% if req.item %}{{ req.item.unit }}{% endif %}</span>
+                {% if req.status == 'partial' %}
+                <span class="badge" style="background:#fff8e6;color:#a07800;font-size:0.65rem;">{{ req.delivered_quantity|floatformat:"-2" }} Delivered</span>
+                {% endif %}
+              </div>
+              <span class="text-muted small d-block">{% if req.item %}{{ req.item.name }}{% else %}{{ req.custom_item_name }} <span class="badge bg-secondary ms-1" style="font-size:0.6rem;">Custom</span>{% endif %}</span>
+            </td>
+            <td class="text-muted small">{{ req.requested_by.name }}</td>
+            <td class="text-muted small">{{ req.notes|default:"-" }}</td>
+            <td>
+              {% if request.user.role == 'driver' or request.user.can_manage %}
+              <div class="dropdown">
+                <button class="btn btn-sm btn-light border dropdown-toggle fw-600" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  {% if req.status == 'pending' %}
+                  <span class="text-warning text-dark"><i class="bi bi-clock me-1"></i>Pending</span>
+                  {% elif req.status == 'partial' %}
+                  <span style="color:#a07800;"><i class="bi bi-pie-chart me-1"></i>Partial</span>
+                  {% elif req.status == 'fulfilled' %}
+                  <span class="text-success"><i class="bi bi-check-circle me-1"></i>Fulfilled</span>
+                  {% else %}
+                  <span class="text-danger"><i class="bi bi-x-circle me-1"></i>Cancelled</span>
+                  {% endif %}
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="min-width: 150px;">
+                  {% if req.status != 'fulfilled' %}
+                  <li>
+                    <form method="POST" action="{% url 'material_request_update_status' req.id %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="status" value="fulfilled">
+                      <button type="submit" class="dropdown-item text-success"><i class="bi bi-check-circle me-2"></i>Fulfilled</button>
+                    </form>
+                  </li>
+                  {% endif %}
+                  {% if req.status != 'cancelled' %}
+                  <li>
+                    <form method="POST" action="{% url 'material_request_update_status' req.id %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="status" value="cancelled">
+                      <button type="submit" class="dropdown-item text-danger"><i class="bi bi-x-circle me-2"></i>Cancelled</button>
+                    </form>
+                  </li>
+                  {% endif %}
+                  {% if req.status != 'pending' %}
+                  <li>
+                    <form method="POST" action="{% url 'material_request_update_status' req.id %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="status" value="pending">
+                      <button type="submit" class="dropdown-item text-warning"><i class="bi bi-clock me-2"></i>Pending</button>
+                    </form>
+                  </li>
+                  {% endif %}
+                </ul>
+              </div>
+              {% else %}
+                {% if req.status == 'pending' %}
+                <span class="badge bg-warning text-dark border">Pending</span>
+                {% elif req.status == 'partial' %}
+                <span class="badge" style="background:#fff8e6;color:#a07800;border:1px solid #a07800;">Partial</span>
+                {% elif req.status == 'fulfilled' %}
+                <span class="badge bg-success border">Fulfilled</span>
+                {% else %}
+                <span class="badge bg-danger border">Cancelled</span>
+                {% endif %}
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="text-center py-5 text-muted">
+              <i class="bi bi-box-seam fs-1 d-block mb-2 text-secondary"></i>
+              No material requests found.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Mobile Card Layout -->
+<div class="d-md-none">
+  {% for req in requests %}
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body p-3">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+          <span class="badge bg-light text-dark border mb-1"><i class="bi bi-calendar3 me-1"></i>{{ req.created_at|date:"d M, y" }}</span>
+          <h6 class="fw-bold mb-0 text-primary">{{ req.site.name }}</h6>
+        </div>
+        <div>
+          {% if request.user.role == 'driver' or request.user.can_manage %}
+          <div class="dropdown">
+            <button class="btn btn-sm btn-light border rounded-pill dropdown-toggle fw-600" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+              {% if req.status == 'pending' %}
+              <span class="text-warning text-dark"><i class="bi bi-clock me-1"></i>Pending</span>
+              {% elif req.status == 'partial' %}
+              <span style="color:#a07800;"><i class="bi bi-pie-chart me-1"></i>Partial</span>
+              {% elif req.status == 'fulfilled' %}
+              <span class="text-success"><i class="bi bi-check-circle me-1"></i>Fulfilled</span>
+              {% else %}
+              <span class="text-danger"><i class="bi bi-x-circle me-1"></i>Cancelled</span>
+              {% endif %}
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width: 150px;">
+              {% if req.status != 'fulfilled' %}
+              <li>
+                <form method="POST" action="{% url 'material_request_update_status' req.id %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="status" value="fulfilled">
+                  <button type="submit" class="dropdown-item text-success"><i class="bi bi-check-circle me-2"></i>Fulfilled</button>
+                </form>
+              </li>
+              {% endif %}
+              {% if req.status != 'cancelled' %}
+              <li>
+                <form method="POST" action="{% url 'material_request_update_status' req.id %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="status" value="cancelled">
+                  <button type="submit" class="dropdown-item text-danger"><i class="bi bi-x-circle me-2"></i>Cancelled</button>
+                </form>
+              </li>
+              {% endif %}
+              {% if req.status != 'pending' %}
+              <li>
+                <form method="POST" action="{% url 'material_request_update_status' req.id %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="status" value="pending">
+                  <button type="submit" class="dropdown-item text-warning"><i class="bi bi-clock me-2"></i>Pending</button>
+                </form>
+              </li>
+              {% endif %}
+            </ul>
+          </div>
+          {% else %}
+            {% if req.status == 'pending' %}
+            <span class="badge bg-warning text-dark border rounded-pill">Pending</span>
+            {% elif req.status == 'partial' %}
+            <span class="badge rounded-pill" style="background:#fff8e6;color:#a07800;border:1px solid #a07800;">Partial</span>
+            {% elif req.status == 'fulfilled' %}
+            <span class="badge bg-success border rounded-pill">Fulfilled</span>
+            {% else %}
+            <span class="badge bg-danger border rounded-pill">Cancelled</span>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+      
+      <div class="p-3 bg-light rounded-3 mb-2 border border-light">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="text-muted small fw-600 text-uppercase mb-1">Item Required</div>
+            <div class="fw-bold text-dark fs-5">{% if req.item %}{{ req.item.name }}{% else %}{{ req.custom_item_name }} <span class="badge bg-secondary ms-1" style="font-size:0.6rem;">Custom</span>{% endif %}</div>
+          </div>
+          <div class="text-end">
+            <div class="text-muted small fw-600 text-uppercase mb-1">Qty</div>
+            <div class="fw-bold fs-4 text-primary">{{ req.quantity|floatformat:"-2" }}<span class="fs-6 text-dark ms-1">{% if req.item %}{{ req.item.unit }}{% endif %}</span></div>
+            {% if req.status == 'partial' %}
+            <div class="text-muted small mt-1" style="color:#a07800!important;">{{ req.delivered_quantity|floatformat:"-2" }} Delivered</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      
+      <div class="d-flex justify-content-between text-muted small mt-2">
+        <span><i class="bi bi-person me-1"></i>{{ req.requested_by.name }}</span>
+        {% if req.notes %}
+        <span class="text-truncate ms-3" style="max-width: 150px;"><i class="bi bi-chat-left-text me-1"></i>{{ req.notes }}</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-body text-center py-5 text-muted">
+      <i class="bi bi-box-seam fs-1 d-block mb-2 text-secondary"></i>
+      No material requests found.
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+{% if request.user.role == 'main_worker' %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const itemSelect = document.getElementById('itemSelect');
+    const customInput = document.getElementById('customItemInput');
+    
+    if (itemSelect && customInput) {
+      function toggleFields() {
+        if (itemSelect.value) {
+          customInput.value = '';
+          customInput.setAttribute('disabled', 'disabled');
+        } else {
+          customInput.removeAttribute('disabled');
+        }
+      }
+      
+      itemSelect.addEventListener('change', toggleFields);
+      toggleFields(); // Initial run
+    }
+  });
+</script>
+{% endif %}
+{% endblock %}

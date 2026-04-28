@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Add Delivery Log{% endblock %}
+{% block page_title %}Log New Delivery{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-transparent border-0 pt-4 pb-2">
+        <h5 class="fw-bold text-dark mb-0"><i class="bi bi-truck me-2 text-primary"></i> Delivery Details</h5>
+      </div>
+      <div class="card-body">
+        <form method="POST" id="deliveryForm">
+          {% csrf_token %}
+          
+          <!-- Main Log Details -->
+          <div class="row g-3 mb-4 pb-4 border-bottom">
+            <div class="col-md-6">
+              <label class="form-label fw-600 text-muted small text-uppercase">Source Storage (Where from?)</label>
+              {{ form.source_storage }}
+              {% if form.source_storage.errors %}<div class="text-danger small mt-1">{{ form.source_storage.errors }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600 text-muted small text-uppercase">Destination Work Site</label>
+              {{ form.site }}
+              {% if form.site.errors %}<div class="text-danger small mt-1">{{ form.site.errors }}</div>{% endif %}
+            </div>
+            <div class="col-md-12">
+              <label class="form-label fw-600 text-muted small text-uppercase">Date of Delivery</label>
+              {{ form.date }}
+              {% if form.date.errors %}<div class="text-danger small mt-1">{{ form.date.errors }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-600 text-muted small text-uppercase">Delivery Notes (Optional)</label>
+              {{ form.notes }}
+              {% if form.notes.errors %}<div class="text-danger small mt-1">{{ form.notes.errors }}</div>{% endif %}
+            </div>
+          </div>
+
+          <!-- Items Formset -->
+          <h6 class="fw-bold text-dark mb-3"><i class="bi bi-boxes me-2 text-primary"></i> Items Delivered</h6>
+          
+          {{ formset.management_form }}
+          <div id="items-container">
+            {% for inline_form in formset %}
+            <div class="item-form-row bg-light rounded-3 p-3 mb-3 position-relative border" {% if forloop.counter > 1 %}style="display:none;"{% endif %}>
+              {% for hidden in inline_form.hidden_fields %}
+                {{ hidden }}
+              {% endfor %}
+              
+              <div class="row g-2 align-items-center">
+                <div class="col-8 col-sm-9">
+                  <label class="form-label text-muted small fw-600 mb-1">Select Item</label>
+                  {{ inline_form.item }}
+                </div>
+                <div class="col-4 col-sm-3">
+                  <label class="form-label text-muted small fw-600 mb-1">Quantity</label>
+                  {{ inline_form.quantity }}
+                </div>
+              </div>
+              
+              {% if inline_form.errors %}
+                <div class="text-danger small mt-2">
+                  {% for field, errors in inline_form.errors.items %}
+                    <strong>{{ field }}:</strong> {{ errors|join:", " }}<br>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          
+          <button type="button" class="btn btn-outline-primary btn-sm mb-4 rounded-pill px-3" id="addItemBtn">
+            <i class="bi bi-plus-circle me-1"></i> Add Another Item
+          </button>
+
+          <div class="d-flex gap-2">
+            <a href="{% url 'delivery_log_list' %}" class="btn btn-light w-50 py-2">Cancel</a>
+            <button type="submit" class="btn btn-primary w-50 py-2 fw-bold">Save Delivery Log</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('items-container');
+    const rows = container.querySelectorAll('.item-form-row');
+    const addBtn = document.getElementById('addItemBtn');
+    let visibleCount = 1;
+    const maxForms = {{ formset.total_form_count }};
+
+    // Make sure the first row is always visible, and hide the rest
+    rows.forEach((row, index) => {
+      if (index === 0) {
+        row.style.display = 'block';
+      } else {
+        // Also clear out their inputs if they have any, to prevent accidental submission of empty lines causing validation errors
+        // Wait, Django ignores completely empty formset forms, so it's fine.
+        row.style.display = 'none';
+      }
+    });
+
+    addBtn.addEventListener('click', function() {
+      if (visibleCount < maxForms) {
+        rows[visibleCount].style.display = 'block';
+        rows[visibleCount].classList.add('animate__animated', 'animate__fadeIn');
+        visibleCount++;
+        
+        if (visibleCount >= maxForms) {
+          addBtn.style.display = 'none';
+        }
+      }
+    });
+  });
+</script>
+{% endblock %}

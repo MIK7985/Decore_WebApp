@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Deactivate Employee{% endblock %}
+{% block page_title %}Deactivate Employee{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-12 col-md-6">
+<div class="card border-{% if employee.status == 'active' %}danger{% else %}success{% endif %}">
+  <div class="card-header bg-{% if employee.status == 'active' %}danger{% else %}success{% endif %} text-white">
+    <i class="bi bi-exclamation-triangle me-2"></i>Confirm {% if employee.status == 'active' %}Deactivation{% else %}Activation{% endif %}
+  </div>
+  <div class="card-body">
+    <p>Are you sure you want to {% if employee.status == 'active' %}deactivate{% else %}activate{% endif %} <strong>{{ employee.name }}</strong>?</p>
+    <p class="text-muted small">
+      {% if employee.status == 'active' %}
+      This will set the employee's status to <em>Inactive</em>. Their records will be preserved, but they won't be able to log in or mark attendance.
+      {% else %}
+      This will set the employee's status back to <em>Active</em>. They will be able to log in and use the platform again.
+      {% endif %}
+    </p>
+    <form method="post" class="d-flex gap-2">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-{% if employee.status == 'active' %}danger{% else %}success{% endif %}">
+        <i class="bi bi-person-{% if employee.status == 'active' %}x{% else %}check{% endif %} me-1"></i>Yes, {% if employee.status == 'active' %}Deactivate{% else %}Activate{% endif %}
+      </button>
+      <a href="{% url 'employee_detail' employee.pk %}" class="btn btn-light">Cancel</a>
+    </form>
+  </div>
+</div>
+</div></div>
+{% endblock %}
