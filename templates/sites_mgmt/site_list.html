@@ -51,7 +51,7 @@
       </div>
       <div class="card-footer bg-white d-flex gap-2">
         <a href="{% url 'site_detail' site.pk %}" class="btn btn-sm btn-primary flex-fill">View Details</a>
-        {% if user.role == 'admin' or user.is_superuser %}
+        {% if user.can_manage %}
         <a href="{% url 'site_edit' site.pk %}" class="btn btn-sm btn-light"><i class="bi bi-pencil"></i></a>
         {% endif %}
       </div>

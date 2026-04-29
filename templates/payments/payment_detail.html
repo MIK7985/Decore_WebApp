@@ -1,6 +1,11 @@
 {% extends 'base.html' %}
 {% block title %}Payment Detail{% endblock %}
 {% block page_title %}Payment Detail{% endblock %}
+{% block back_url %}
+<a href="{% url 'payment_list' %}" class="btn btn-sm btn-light border shadow-sm">
+  <i class="bi bi-arrow-left fs-5"></i>
+</a>
+{% endblock %}
 {% block content %}
 <div class="row justify-content-center"><div class="col-12 col-md-6">
 <div class="card">

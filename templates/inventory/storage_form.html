@@ -1,6 +1,11 @@
 {% extends 'base.html' %}
 {% block title %}{{ title }}{% endblock %}
 {% block page_title %}{{ title }}{% endblock %}
+{% block back_url %}
+<a href="{% url back_url_name|default:'storage_list' %}" class="btn btn-sm btn-light border shadow-sm">
+  <i class="bi bi-arrow-left fs-5"></i>
+</a>
+{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
@@ -28,7 +33,7 @@
           
           <div class="d-flex gap-2 mt-4">
             <button type="submit" class="btn btn-primary flex-fill fw-600">Save Storage</button>
-            <a href="{% url 'storage_list' %}" class="btn btn-light fw-600">Cancel</a>
+            <a href="{% url back_url_name|default:'storage_list' %}" class="btn btn-light fw-600">Cancel</a>
           </div>
         </form>
       </div>

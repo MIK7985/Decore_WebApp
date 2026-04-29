@@ -21,22 +21,34 @@
             <div class="col-md-6">
               <label class="form-label fw-600 text-muted small text-uppercase">Source Storage (Where from?)</label>
               {{ form.source_storage }}
-              {% if form.source_storage.errors %}<div class="text-danger small mt-1">{{ form.source_storage.errors }}</div>{% endif %}
+              {% if form.source_storage.errors %}
+                <div class="invalid-feedback d-block">{{ form.source_storage.errors|join:", " }}</div>
+                <script>document.getElementById('{{ form.source_storage.id_for_label }}').classList.add('is-invalid');</script>
+              {% endif %}
             </div>
             <div class="col-md-6">
               <label class="form-label fw-600 text-muted small text-uppercase">Destination Work Site</label>
               {{ form.site }}
-              {% if form.site.errors %}<div class="text-danger small mt-1">{{ form.site.errors }}</div>{% endif %}
+              {% if form.site.errors %}
+                <div class="invalid-feedback d-block">{{ form.site.errors|join:", " }}</div>
+                <script>document.getElementById('{{ form.site.id_for_label }}').classList.add('is-invalid');</script>
+              {% endif %}
             </div>
             <div class="col-md-12">
               <label class="form-label fw-600 text-muted small text-uppercase">Date of Delivery</label>
               {{ form.date }}
-              {% if form.date.errors %}<div class="text-danger small mt-1">{{ form.date.errors }}</div>{% endif %}
+              {% if form.date.errors %}
+                <div class="invalid-feedback d-block">{{ form.date.errors|join:", " }}</div>
+                <script>document.getElementById('{{ form.date.id_for_label }}').classList.add('is-invalid');</script>
+              {% endif %}
             </div>
             <div class="col-12">
               <label class="form-label fw-600 text-muted small text-uppercase">Delivery Notes (Optional)</label>
               {{ form.notes }}
-              {% if form.notes.errors %}<div class="text-danger small mt-1">{{ form.notes.errors }}</div>{% endif %}
+              {% if form.notes.errors %}
+                <div class="invalid-feedback d-block">{{ form.notes.errors|join:", " }}</div>
+                <script>document.getElementById('{{ form.notes.id_for_label }}').classList.add('is-invalid');</script>
+              {% endif %}
             </div>
           </div>
 
@@ -79,7 +91,7 @@
 
           <div class="d-flex gap-2">
             <a href="{% url 'delivery_log_list' %}" class="btn btn-light w-50 py-2">Cancel</a>
-            <button type="submit" class="btn btn-primary w-50 py-2 fw-bold">Save Delivery Log</button>
+            <button type="submit" class="btn btn-primary w-50 py-2 fw-bold shadow-sm">Save Delivery Log</button>
           </div>
         </form>
       </div>
@@ -103,8 +115,6 @@
       if (index === 0) {
         row.style.display = 'block';
       } else {
-        // Also clear out their inputs if they have any, to prevent accidental submission of empty lines causing validation errors
-        // Wait, Django ignores completely empty formset forms, so it's fine.
         row.style.display = 'none';
       }
     });

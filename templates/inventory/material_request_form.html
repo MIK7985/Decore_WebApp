@@ -1,6 +1,11 @@
 {% extends 'base.html' %}
 {% block title %}Request Materials{% endblock %}
 {% block page_title %}New Material Request{% endblock %}
+{% block back_url %}
+<a href="{% url 'material_request_list' %}" class="btn btn-sm btn-light border shadow-sm">
+  <i class="bi bi-arrow-left fs-5"></i>
+</a>
+{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">

@@ -15,7 +15,12 @@ class WorkSiteForm(forms.ModelForm):
             'description': forms.Textarea(attrs={'class':'form-control','rows':3}),
             'status': forms.Select(attrs={'class':'form-select'}),
             'client_name': forms.TextInput(attrs={'class':'form-control'}),
-            'client_phone': forms.TextInput(attrs={'class':'form-control'}),
+            'client_phone': forms.TextInput(attrs={
+                'class':'form-control',
+                'placeholder':'10-digit mobile number',
+                'maxlength':'10',
+                'oninput':"this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);"
+            }),
             'client_email': forms.EmailInput(attrs={'class':'form-control'}),
             'estimated_cost': forms.NumberInput(attrs={'class':'form-control','step':'0.01'}),
         }

@@ -16,6 +16,11 @@
   <script>
     const savedTheme = localStorage.getItem('theme') || 'dark';
     if(savedTheme === 'dark') document.documentElement.setAttribute('data-bs-theme', 'dark');
+    
+    // Smart Redirect: If user is already logged in, whisk them to the dashboard immediately
+    {% if user.is_authenticated %}
+      window.location.href = "{% url 'dashboard' %}";
+    {% endif %}
   </script>
   <style>
     :root {

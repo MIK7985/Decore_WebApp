@@ -199,8 +199,52 @@
     .btn-outline-primary:hover { background: var(--primary); color: #fff; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25); border-color: var(--primary); }
     .btn:active { transform: scale(0.96) !important; box-shadow: none !important; }
     
-    .form-control, .form-select { border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); padding: 0.8rem 1.2rem; transition: all 0.3s ease; background: rgba(255,255,255,0.8); font-weight: 500; }
-    .form-control:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15); background: #fff;}
+    .form-control, .form-select { 
+      border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); padding: 0.8rem 1.2rem; 
+      transition: all 0.3s ease; background: rgba(255,255,255,0.8); font-weight: 500; 
+    }
+    .form-control:focus, .form-select:focus { 
+      border-color: var(--primary); box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15); 
+      background: #fff; outline: none;
+    }
+    
+    /* Error States - Only show if server adds 'is-invalid' OR if form was validated */
+    .form-control.is-invalid, .form-select.is-invalid,
+    .was-validated .form-control:invalid, 
+    .was-validated .form-select:invalid {
+      border-color: #ef4444 !important;
+    }
+    
+    .form-control.is-invalid:focus, .form-select.is-invalid:focus,
+    .was-validated .form-control:invalid:focus, 
+    .was-validated .form-select:invalid:focus {
+      border-color: #ef4444 !important;
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2) !important;
+      background-color: #fff;
+    }
+    
+    .invalid-feedback {
+      color: #ef4444;
+      font-weight: 600;
+      font-size: 0.8rem;
+      margin-top: 0.35rem;
+      display: none; /* Hidden by default */
+    }
+    .is-invalid ~ .invalid-feedback,
+    .was-validated :invalid ~ .invalid-feedback {
+      display: block;
+    }
+    
+    .errorlist {
+      color: #ef4444;
+      list-style: none;
+      padding-left: 0;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-top: 5px;
+      margin-bottom: 0;
+    }
+    .form-label .text-danger { font-size: 1.1rem; }
     
     /* === SCROLLBAR === */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -299,11 +343,7 @@
     
     /* === ANIMATIONS === */
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    .content > * { animation: fadeIn 0.5s ease forwards; opacity: 0; }
-    .content > *:nth-child(1) { animation-delay: 0.1s; }
-    .content > *:nth-child(2) { animation-delay: 0.2s; }
-    .content > *:nth-child(3) { animation-delay: 0.3s; }
-    .content > *:nth-child(4) { animation-delay: 0.4s; }
+    .content > * {  }
 
   </style>
   {% block extra_css %}{% endblock %}
@@ -436,9 +476,13 @@
 <!-- Main -->
 <div id="main">
   <div class="topbar">
-    <button class="btn btn-sm btn-light d-lg-none" id="sidebarToggle">
-      <i class="bi bi-list fs-5"></i>
-    </button>
+    <div class="d-flex align-items-center gap-2">
+      {% block back_url %}
+      <button class="btn btn-sm btn-light d-lg-none" id="sidebarToggle">
+        <i class="bi bi-list fs-5"></i>
+      </button>
+      {% endblock %}
+    </div>
     <span class="topbar-title">{% block page_title %}Dashboard{% endblock %}</span>
     <div class="d-flex align-items-center gap-2">
       <span class="badge bg-light text-dark border d-none d-lg-inline-block">
@@ -523,7 +567,7 @@
     <i class="bi bi-truck"></i><span>Deliveries</span>
   </a>
   {% else %}
-  <a href="{% url 'dashboard' %}" class="bottom-nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+  <a href="{% if user.employee %}{% url 'employee_detail' user.employee.pk %}{% else %}#{% endif %}" class="bottom-nav-item {% if 'employee_detail' in request.resolver_match.url_name %}active{% endif %}">
     <i class="bi bi-house"></i><span>Home</span>
   </a>
   {% endif %}
@@ -611,5 +655,13 @@
   });
 </script>
 {% block extra_js %}{% endblock %}
+  <script>
+    // Global Form Validation Handler
+    document.addEventListener('submit', function(e) {
+      if (e.target.tagName === 'FORM') {
+        e.target.classList.add('was-validated');
+      }
+    }, true);
+  </script>
 </body>
 </html>

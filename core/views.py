@@ -3,11 +3,14 @@ from django.contrib.auth import authenticate, login, logout, update_session_auth
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib import messages
-from django.db.models import Sum, Count
+from django.db.models import Sum, Count, Q
 from django.utils import timezone
 import datetime
+from .decorators import admin_or_office_staff_required
 
-
+def csrf_failure(request, reason=""):
+    messages.error(request, "Your session has expired or you've been logged out in another window. Please log in again.")
+    return redirect('login_view')
 def login_view(request):
     if request.user.is_authenticated:
         if getattr(request.user, 'role', '') == 'client':
@@ -15,15 +18,13 @@ def login_view(request):
         if not request.user.can_manage and hasattr(request.user, 'employee') and request.user.employee:
             return redirect('employee_detail', pk=request.user.employee.pk)
         return redirect('dashboard')
-        
+    
     if request.method == 'POST':
         login_input = request.POST.get('username')
         password = request.POST.get('password')
         
-        # Try standard login (assuming login_input is the username/employee_id)
         user = authenticate(request, username=login_input, password=password)
         
-        # If standard login fails, check if they entered a valid phone number
         if not user:
             from employees.models import Employee
             try:
@@ -43,7 +44,12 @@ def login_view(request):
             return redirect('dashboard')
         else:
             messages.error(request, 'Invalid username or password.')
-    return render(request, 'core/login.html')
+            
+    response = render(request, 'core/login.html')
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    return response
 
 
 def logout_view(request):
@@ -69,22 +75,19 @@ def change_password(request):
 
 
 @login_required
+@admin_or_office_staff_required
 def dashboard(request):
-    # Route non-manager employees straight to their own profile, protecting the admin analytics
-    if not request.user.can_manage:
-        if hasattr(request.user, 'employee') and request.user.employee:
-            return redirect('employee_detail', pk=request.user.employee.pk)
-        else:
-            return redirect('attendance_list') # Fallback
-            
     from employees.models import Employee
-    from sites_mgmt.models import WorkSite
+    from sites_mgmt.models import WorkSite, EmployeeAssignment
     from attendance.models import Attendance
     from salary.models import SalarySummary
     from payments.models import Payment
     from inventory.models import DeliveryLog, MaterialRequest
 
     today = timezone.now().date()
+    current_month = today.month
+    current_year = today.year
+
     current_month = today.month
     current_year = today.year
 
@@ -134,6 +137,7 @@ def dashboard(request):
         'recent_payments': recent_payments,
         'today': today,
         'current_month_name': today.strftime('%B %Y'),
+        'is_employee': False,
     }
     return render(request, 'core/dashboard.html', context)
 

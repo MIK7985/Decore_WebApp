@@ -13,11 +13,26 @@ class EmployeeForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        if self.user and getattr(self.user, 'role', '') != 'admin' and not getattr(self.user, 'is_superuser', False):
-            # Non-admins cannot create other office_staff
-            filtered_choices = [(k, v) for k, v in Employee.ROLE_CHOICES if k != 'office_staff']
-            self.fields['role'].choices = filtered_choices
-            self.fields['role'].widget.choices = filtered_choices
+        
+        # Determine if the user is a manager (Admin or Office Staff)
+        is_manager = self.user and (self.user.role in ['admin', 'office_staff'] or self.user.is_superuser)
+        
+        if self.user:
+            # If not a manager, they are likely editing their own profile
+            if not is_manager:
+                # Disable sensitive business fields for standard employees
+                restricted_fields = ['name', 'role', 'daily_wage', 'assigned_site', 'joining_date', 'status', 'notes']
+                for field_name in restricted_fields:
+                    if field_name in self.fields:
+                        self.fields[field_name].disabled = True
+                        self.fields[field_name].required = False
+            
+            # Non-admins cannot set roles to office_staff
+            if getattr(self.user, 'role', '') != 'admin' and not getattr(self.user, 'is_superuser', False):
+                if 'role' in self.fields:
+                    filtered_choices = [(k, v) for k, v in Employee.ROLE_CHOICES if k != 'office_staff']
+                    self.fields['role'].choices = filtered_choices
+                    self.fields['role'].widget.choices = filtered_choices
 
     class Meta:
         model = Employee
@@ -25,7 +40,16 @@ class EmployeeForm(forms.ModelForm):
         widgets = {
             'name': forms.TextInput(attrs={'class':'form-control','placeholder':'Full Name'}),
             'profile_pic': forms.FileInput(attrs={'class':'form-control'}),
-            'phone': forms.TextInput(attrs={'class':'form-control','placeholder':'10-digit mobile number', 'pattern': '[0-9]{10}', 'title': 'Phone number must be exactly 10 digits', 'maxlength': '10', 'minlength': '10', 'type': 'tel', 'oninput': "this.value = this.value.replace(/[^0-9]/g, '');"}),
+            'phone': forms.TextInput(attrs={
+                'class':'form-control',
+                'placeholder':'10-digit mobile number', 
+                'pattern': '[0-9]{10}', 
+                'title': 'Phone number must be exactly 10 digits', 
+                'maxlength': '10', 
+                'minlength': '10', 
+                'type': 'tel', 
+                'oninput': "this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);"
+            }),
             'role': forms.Select(attrs={'class':'form-select'}),
             'daily_wage': forms.NumberInput(attrs={'class':'form-control','step':'0.01','min':'0'}),
             'address': forms.Textarea(attrs={'class':'form-control','rows':3}),

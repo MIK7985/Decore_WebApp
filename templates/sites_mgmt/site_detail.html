@@ -1,6 +1,11 @@
 {% extends 'base.html' %}
 {% block title %}{{ site.name }}{% endblock %}
 {% block page_title %}Site Details{% endblock %}
+{% block back_url %}
+<a href="{% if user.can_manage %}{% url 'site_list' %}{% else %}{% url 'worker_sites' %}{% endif %}" class="btn btn-sm btn-light border shadow-sm">
+  <i class="bi bi-arrow-left fs-5"></i>
+</a>
+{% endblock %}
 {% block content %}
 <div class="row g-3">
   <div class="col-12 col-md-4">
@@ -89,7 +94,7 @@
     <div class="card">
       <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
         <span class="fw-600"><i class="bi bi-people me-2 text-primary"></i>Assigned Workers ({{ assignments.count }})</span>
-        {% if user.role == 'admin' or user.is_superuser %}
+        {% if user.can_manage %}
         <a href="{% url 'assign_employee' site.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-person-plus me-1"></i>Assign Worker</a>
         {% endif %}
       </div>
@@ -105,7 +110,7 @@
                 <td class="small text-muted">{{ a.assigned_date }}</td>
                 <td>{% if a.is_active %}<span class="badge badge-active">Yes</span>{% else %}<span class="badge badge-inactive">No</span>{% endif %}</td>
                 <td>
-                  {% if user.role == 'admin' or user.is_superuser %}
+                  {% if user.can_manage %}
                   <a href="{% url 'remove_assignment' a.pk %}" class="btn btn-sm btn-light text-danger" title="Remove"><i class="bi bi-x-lg"></i></a>
                   {% endif %}
                 </td>
@@ -179,7 +184,7 @@
     <div class="card mt-4">
       <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
         <span class="fw-600"><i class="bi bi-box-seam me-2 text-primary"></i>Materials Delivered</span>
-        <a href="{% url 'download_site_materials_pdf' site.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-file-pdf me-1"></i>Download PDF</a>
+        <a href="{% url 'download_site_materials_pdf' site.pk %}" class="btn btn-sm btn-outline-danger" target="_blank"><i class="bi bi-file-pdf me-1"></i>Download PDF</a>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">

@@ -7,25 +7,28 @@
   <a href="{% url 'report_dashboard' %}" class="btn btn-light btn-sm"><i class="bi bi-arrow-left me-1"></i>Reports</a>
 </div>
 
-<div class="card mb-3"><div class="card-body py-2">
+<div class="card mb-3 shadow-sm border-0"><div class="card-body py-3">
   <form method="get" class="row g-2 align-items-end">
-    <div class="col-6 col-md-2">
+    <div class="col-6 col-md-3">
+      <label class="form-label fw-600 small text-muted mb-1"><i class="bi bi-calendar-month me-1"></i>Month</label>
       <select name="month" class="form-select form-select-sm">
         {% for num,name in months %}<option value="{{ num }}" {% if month == num %}selected{% endif %}>{{ name }}</option>{% endfor %}
       </select>
     </div>
-    <div class="col-4 col-md-2">
+    <div class="col-6 col-md-2">
+      <label class="form-label fw-600 small text-muted mb-1"><i class="bi bi-calendar3 me-1"></i>Year</label>
       <select name="year" class="form-select form-select-sm">
         {% for y in years %}<option value="{{ y }}" {% if year == y %}selected{% endif %}>{{ y }}</option>{% endfor %}
       </select>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-12 col-md-4">
+      <label class="form-label fw-600 small text-muted mb-1"><i class="bi bi-building me-1"></i>Work Site</label>
       <select name="site" class="form-select form-select-sm">
         <option value="">All Sites</option>
         {% for s in sites %}<option value="{{ s.pk }}" {% if site_id == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
       </select>
     </div>
-    <div class="col-auto"><button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>View</button></div>
+    <div class="col-auto ms-auto"><button type="submit" class="btn btn-primary btn-sm px-3"><i class="bi bi-search me-1"></i>Generate Report</button></div>
   </form>
 </div></div>
 
@@ -34,7 +37,7 @@
     <div class="table-responsive">
       <table class="table table-hover mb-0 align-middle">
         <thead class="table-light">
-          <tr><th>Employee</th><th>Role</th><th class="text-center">Present</th><th class="text-center">Absent</th><th class="text-center">Half Day</th><th class="text-center">Effective Days</th><th>Salary (Est.)</th></tr>
+          <tr><th>Employee</th><th>Role</th><th class="text-center">Present</th><th class="text-center">Absent</th><th class="text-center">Half</th><th class="text-center">1.5 Day</th><th class="text-center">Effective</th><th>Salary (Est.)</th></tr>
         </thead>
         <tbody>
           {% for row in report_data %}
@@ -44,21 +47,24 @@
             <td class="text-center text-success fw-500">{{ row.present }}</td>
             <td class="text-center text-danger fw-500">{{ row.absent }}</td>
             <td class="text-center text-warning fw-500">{{ row.half }}</td>
+            <td class="text-center text-info fw-500">{{ row.extra|default:0 }}</td>
             <td class="text-center fw-700">{{ row.effective_days }}</td>
             <td class="text-success fw-500">₹{{ row.salary|floatformat:2 }}</td>
           </tr>
           {% empty %}
-          <tr><td colspan="7" class="text-center py-4 text-muted">No data for this period.</td></tr>
+          <tr><td colspan="8" class="text-center py-4 text-muted">No data for this period.</td></tr>
           {% endfor %}
         </tbody>
         {% if report_data %}
         <tfoot class="table-light fw-700">
           <tr>
-            <td colspan="2">Total</td>
-            <td class="text-center text-success">{% for r in report_data %}{{ r.present }}{% if not forloop.last %}+{% endif %}{% endfor %}</td>
-            <td></td><td></td>
-            <td class="text-center">{% for r in report_data %}{{ r.effective_days }}{% if not forloop.last %}+{% endif %}{% endfor %}</td>
-            <td class="text-success">₹{% for r in report_data %}{{ r.salary|floatformat:0 }}{% if not forloop.last %}+{% endif %}{% endfor %}</td>
+            <td colspan="2">Grand Totals</td>
+            <td class="text-center text-success">{{ totals.present }}</td>
+            <td class="text-center text-danger">{{ totals.absent }}</td>
+            <td class="text-center text-warning">{{ totals.half }}</td>
+            <td class="text-center text-info">{{ totals.extra }}</td>
+            <td class="text-center text-dark">{{ totals.effective }}</td>
+            <td class="text-success">₹{{ totals.salary|floatformat:2 }}</td>
           </tr>
         </tfoot>
         {% endif %}

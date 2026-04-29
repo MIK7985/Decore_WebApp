@@ -343,16 +343,23 @@ def request_advance(request):
         return redirect('dashboard')
         
     if request.method == 'POST':
-        amount = request.POST.get('amount')
-        reason = request.POST.get('reason')
+        amount_str = request.POST.get('amount')
+        reason = request.POST.get('reason', '')
+        
         try:
-            AdvanceRequest.objects.create(
-                employee=request.user.employee,
-                amount=Decimal(amount),
-                reason=reason
-            )
-            messages.success(request, 'Advance request submitted successfully.')
-            return redirect('dashboard')
+            amount = Decimal(amount_str)
+            if amount > 20000:
+                messages.error(request, "Advance amount cannot exceed ₹20,000.")
+            elif len(reason) > 200:
+                messages.error(request, "Reason must be 200 characters or less.")
+            else:
+                AdvanceRequest.objects.create(
+                    employee=request.user.employee,
+                    amount=amount,
+                    reason=reason
+                )
+                messages.success(request, 'Advance request submitted successfully.')
+                return redirect('request_advance')
         except Exception as e:
             messages.error(request, f"Error submitting request: {e}")
             

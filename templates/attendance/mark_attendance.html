@@ -166,21 +166,21 @@ document.addEventListener('DOMContentLoaded', () => {
         statusSelect.addEventListener('change', function() {
           if (empRole === 'driver') {
             siteSelect.required = false;
-            siteSelect.classList.remove('border-danger');
+            siteSelect.classList.remove('is-invalid');
           } else if (this.value === 'present' || this.value === 'half_day' || this.value === '1_5_days') {
             siteSelect.required = true;
           } else {
             siteSelect.required = false;
-            siteSelect.classList.remove('border-danger');
+            siteSelect.classList.remove('is-invalid');
           }
         });
         
         // Add visual indicator if they try to submit without site
         siteSelect.addEventListener('invalid', function() {
-          this.classList.add('border-danger');
+          this.classList.add('is-invalid');
         });
         siteSelect.addEventListener('change', function() {
-          this.classList.remove('border-danger');
+          this.classList.remove('is-invalid');
         });
         
         // Trigger initial state

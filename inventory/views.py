@@ -7,7 +7,7 @@ from django.forms import inlineformset_factory
 
 @login_required
 def storage_list(request):
-    if not (request.user.can_manage or request.user.role == 'storage_manager'):
+    if not (request.user.can_manage or request.user.role == 'storage_manager' or request.user.role == 'driver'):
         messages.error(request, "You do not have permission to view storages.")
         return redirect('dashboard')
     
@@ -44,9 +44,10 @@ def storage_add(request):
 def storage_detail(request, pk):
     storage = get_object_or_404(StorageFacility, pk=pk)
     
-    # Restrict to admin, superuser, or the assigned manager
-    if not (request.user.can_manage or (request.user.employee and storage.manager == request.user.employee)):
-        messages.error(request, "You do not have permission to manage this storage facility.")
+    # Restrict to admin, superuser, storage manager, or driver
+    is_driver = request.user.role == 'driver'
+    if not (request.user.can_manage or is_driver or (request.user.employee and storage.manager == request.user.employee)):
+        messages.error(request, "You do not have permission to view this storage facility.")
         return redirect('storage_list')
         
     stocks = storage.stocks.all().select_related('item').order_by('item__category', 'item__name')
@@ -71,6 +72,7 @@ def storage_detail(request, pk):
         'storage': storage,
         'stocks': stocks,
         'form': form,
+        'is_driver': is_driver,
     }
     return render(request, 'inventory/storage_detail.html', context)
 
@@ -122,7 +124,11 @@ def item_add(request):
     else:
         form = ItemForm()
         
-    return render(request, 'inventory/storage_form.html', {'form': form, 'title': 'Add New Item to Catalog'})
+    return render(request, 'inventory/storage_form.html', {
+        'form': form, 
+        'title': 'Add New Item to Catalog',
+        'back_url_name': 'item_list'
+    })
 
 @login_required
 def item_edit(request, pk):
@@ -140,7 +146,11 @@ def item_edit(request, pk):
     else:
         form = ItemForm(instance=item)
         
-    return render(request, 'inventory/storage_form.html', {'form': form, 'title': f'Edit {item.name}'})
+    return render(request, 'inventory/storage_form.html', {
+        'form': form, 
+        'title': f'Edit {item.name}',
+        'back_url_name': 'item_list'
+    })
 
 @login_required
 def item_delete(request, pk):
@@ -283,6 +293,30 @@ def delivery_log_create(request):
             if not has_items:
                 messages.error(request, "You must include at least one item in the delivery log.")
             else:
+                # --- STOCK VALIDATION ---
+                insufficient_stock = []
+                source_storage = form.cleaned_data.get('source_storage')
+                
+                if source_storage:
+                    for inline_form in formset:
+                        if inline_form.cleaned_data and not inline_form.cleaned_data.get('DELETE', False):
+                            item = inline_form.cleaned_data.get('item')
+                            qty = inline_form.cleaned_data.get('quantity')
+                            if item and qty:
+                                stock = StorageStock.objects.filter(storage=source_storage, item=item).first()
+                                current_qty = stock.quantity if stock else 0
+                                if current_qty < qty:
+                                    insufficient_stock.append(f"{item.name} (Available: {current_qty})")
+                
+                if insufficient_stock:
+                    messages.error(request, f"Insufficient stock in {source_storage.name} for: {', '.join(insufficient_stock)}")
+                    # Return to form with error messages
+                    return render(request, 'inventory/delivery_log_form.html', {
+                        'form': form,
+                        'formset': formset
+                    })
+                
+                # Proceed with save if stock is sufficient
                 log = form.save(commit=False)
                 log.driver = request.user.employee
                 log.save()

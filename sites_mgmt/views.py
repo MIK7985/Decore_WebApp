@@ -10,6 +10,7 @@ from core.decorators import admin_required, admin_or_office_staff_required
 
 
 @login_required
+@admin_or_office_staff_required
 def site_list(request):
     sites = WorkSite.objects.all()
     q = request.GET.get('q', '')
@@ -29,6 +30,16 @@ def site_list(request):
 @login_required
 def site_detail(request, pk):
     site = get_object_or_404(WorkSite, pk=pk)
+    
+    # Security check
+    if not request.user.can_manage and request.user.role != 'driver':
+        if hasattr(request.user, 'employee') and request.user.employee:
+            is_assigned = EmployeeAssignment.objects.filter(site=site, employee=request.user.employee, is_active=True).exists()
+            if not is_assigned:
+                messages.error(request, "Access denied. You are not assigned to this site.")
+                return redirect('worker_sites')
+        else:
+            return redirect('login')
     assignments = EmployeeAssignment.objects.filter(site=site).select_related('employee','supervisor')
     today = timezone.now().date()
     labor_cost = site.get_labor_cost(today.month, today.year)

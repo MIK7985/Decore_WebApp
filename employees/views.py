@@ -15,6 +15,7 @@ from core.decorators import admin_required, admin_or_office_staff_required
 
 
 @login_required
+@admin_or_office_staff_required
 def employee_list(request):
     employees = Employee.objects.all()
     query = request.GET.get('q', '')
@@ -43,6 +44,14 @@ def employee_list(request):
 @login_required
 def employee_detail(request, pk):
     employee = get_object_or_404(Employee, pk=pk)
+    
+    # Security check: Standard employees can only see their own profile
+    if not request.user.can_manage:
+        if not hasattr(request.user, 'employee') or request.user.employee.id != employee.id:
+            messages.error(request, "Access denied. You can only view your own profile.")
+            if hasattr(request.user, 'employee') and request.user.employee:
+                return redirect('employee_detail', pk=request.user.employee.pk)
+            return redirect('login')
     from attendance.models import Attendance
     from sites_mgmt.models import EmployeeAssignment
     from django.utils import timezone
@@ -99,11 +108,19 @@ def employee_add(request):
     return render(request, 'employees/employee_form.html', {'form': form, 'title': 'Add Employee'})
 
 
-@admin_or_office_staff_required
+@login_required
 def employee_edit(request, pk):
     from sites_mgmt.models import EmployeeAssignment
     from django.utils import timezone
     employee = get_object_or_404(Employee, pk=pk)
+    
+    # Permission Check: Admin, Office Staff, OR the employee themselves
+    is_manager = request.user.role in ['admin', 'office_staff'] or request.user.is_superuser
+    is_self = hasattr(request.user, 'employee') and request.user.employee.id == employee.id
+    
+    if not (is_manager or is_self):
+        messages.error(request, "Permission Denied. You cannot edit this profile.")
+        return redirect('dashboard')
     
     current_assignment = EmployeeAssignment.objects.filter(employee=employee, is_active=True).first()
     initial_data = {'assigned_site': current_assignment.site if current_assignment else None}
@@ -114,23 +131,25 @@ def employee_edit(request, pk):
         emp = form.save()
         assigned_site = form.cleaned_data.get('assigned_site')
         
-        if assigned_site:
-            # Update or create active assignment
-            if not current_assignment or current_assignment.site != assigned_site:
+        # Only allow managers to update site assignments
+        if is_manager:
+            if assigned_site:
+                # Update or create active assignment
+                if not current_assignment or current_assignment.site != assigned_site:
+                    if current_assignment:
+                        current_assignment.is_active = False
+                        current_assignment.end_date = timezone.now().date()
+                        current_assignment.save()
+                    EmployeeAssignment.objects.create(employee=emp, site=assigned_site, is_active=True)
+            else:
                 if current_assignment:
                     current_assignment.is_active = False
                     current_assignment.end_date = timezone.now().date()
                     current_assignment.save()
-                EmployeeAssignment.objects.create(employee=emp, site=assigned_site, is_active=True)
-        else:
-            if current_assignment:
-                current_assignment.is_active = False
-                current_assignment.end_date = timezone.now().date()
-                current_assignment.save()
 
-        messages.success(request, f'Employee "{employee.name}" updated.')
+        messages.success(request, f'Profile for "{employee.name}" updated.')
         return redirect('employee_detail', pk=pk)
-    return render(request, 'employees/employee_form.html', {'form': form, 'title': 'Edit Employee', 'employee': employee})
+    return render(request, 'employees/employee_form.html', {'form': form, 'title': 'Edit Profile' if is_self else 'Edit Employee', 'employee': employee})
 
 
 @admin_or_office_staff_required
