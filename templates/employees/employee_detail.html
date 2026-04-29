@@ -2,9 +2,11 @@
 {% block title %}{{ employee.name }}{% endblock %}
 {% block page_title %}Employee Detail{% endblock %}
 {% block back_url %}
-<a href="{% if user.can_manage %}{% url 'employee_list' %}{% else %}{% url 'dashboard' %}{% endif %}" class="btn btn-sm btn-light border shadow-sm">
+{% if user.can_manage %}
+<a href="{% url 'employee_list' %}" class="btn btn-sm btn-light border shadow-sm">
   <i class="bi bi-arrow-left fs-5"></i>
 </a>
+{% endif %}
 {% endblock %}
 
 {% block extra_css %}
@@ -79,44 +81,51 @@
         <span class="badge badge-inactive rounded-pill">Inactive</span>
         {% endif %}
       </div>
-      <div class="card-body border-top">
-        <div class="row g-2 text-sm">
-          <div class="col-12"><i class="bi bi-telephone text-muted me-2"></i>{{ employee.phone }}</div>
-          <div class="col-12"><i class="bi bi-geo-alt text-muted me-2"></i>{{ employee.address }}</div>
-          <div class="col-12"><i class="bi bi-calendar text-muted me-2"></i>Joined {{ employee.joining_date }}</div>
-          <div class="col-12"><i class="bi bi-currency-rupee text-muted me-1"></i>₹{{ employee.daily_wage }}/day</div>
-          {% if employee.emergency_contact %}<div class="col-12"><i class="bi bi-telephone-plus text-muted me-2"></i>{{ employee.emergency_contact }}</div>{% endif %}
+      <div class="card-body border-top py-3">
+        <div class="d-flex justify-content-center">
+          <div class="row g-2 text-sm text-start" style="max-width: fit-content;">
+            <div class="col-12"><i class="bi bi-telephone text-primary me-2 opacity-75"></i>{{ employee.phone }}</div>
+            <div class="col-12"><i class="bi bi-geo-alt text-primary me-2 opacity-75"></i>{{ employee.address }}</div>
+            <div class="col-12"><i class="bi bi-calendar-event text-primary me-2 opacity-75"></i>Joined {{ employee.joining_date|date:"M d, Y" }}</div>
+            <div class="col-12"><i class="bi bi-currency-rupee text-primary me-1 opacity-75"></i>₹{{ employee.daily_wage }}/day</div>
+            {% if employee.emergency_contact %}
+            <div class="col-12"><i class="bi bi-telephone-plus text-primary me-2 opacity-75"></i>{{ employee.emergency_contact }}</div>
+            {% endif %}
+          </div>
         </div>
       </div>
       
-      {% if request.user.employee and request.user.employee.id == employee.id %}
-      <div class="card-footer bg-white border-top-0 pt-0 pb-3">
-        {% if already_marked_today %}
-        <button class="btn btn-success w-100 fw-600" disabled><i class="bi bi-check-circle-fill me-2"></i>Attendance Marked for Today!</button>
-        {% else %}
-        <a href="{% url 'mark_attendance' %}" class="btn btn-primary w-100 fw-600 shadow-sm"><i class="bi bi-pencil-square me-2"></i>Mark Today's Attendance</a>
-        {% endif %}
-      </div>
-      {% endif %}
-      <div class="card-footer bg-white d-flex flex-wrap gap-2">
-        {% if user.role == 'admin' or user.is_superuser or user.employee.id == employee.id %}
-        <a href="{% url 'employee_edit' employee.pk %}" class="btn btn-primary btn-sm flex-fill"><i class="bi bi-pencil me-1"></i>{% if user.employee.id == employee.id %}Edit Profile{% else %}Edit{% endif %}</a>
-        {% endif %}
-        
-        {% if user.role == 'admin' or user.is_superuser %}
-        <form method="POST" action="{% url 'employee_reset_password' employee.pk %}" class="d-inline flex-fill">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-outline-secondary btn-sm w-100" onclick="return confirm('Reset password to password123 for {{ employee.name }}?')">
-            <i class="bi bi-key"></i> Reset PW
-          </button>
-        </form>
-
-        {% if employee.status == 'active' %}
-        <a href="{% url 'employee_delete' employee.pk %}" class="btn btn-outline-danger btn-sm" title="Deactivate"><i class="bi bi-person-x"></i> Deactivate</a>
-        {% else %}
-        <a href="{% url 'employee_delete' employee.pk %}" class="btn btn-outline-success btn-sm" title="Activate"><i class="bi bi-person-check"></i> Activate</a>
-        {% endif %}
-        {% endif %}
+      <div class="card-footer bg-white border-top py-3">
+        <div class="d-flex flex-column gap-2">
+          {% if request.user.employee and request.user.employee.id == employee.id %}
+            {% if already_marked_today %}
+            <button class="btn btn-success w-100 fw-600" disabled><i class="bi bi-check-circle-fill me-2"></i>Attendance Marked</button>
+            {% else %}
+            <a href="{% url 'mark_attendance' %}" class="btn btn-primary w-100 fw-600 shadow-sm"><i class="bi bi-pencil-square me-2"></i>Mark Today's Attendance</a>
+            {% endif %}
+          {% endif %}
+          
+          <div class="d-flex flex-wrap gap-2">
+            {% if user.role == 'admin' or user.is_superuser or user.employee.id == employee.id %}
+            <a href="{% url 'employee_edit' employee.pk %}" class="btn btn-light border btn-sm flex-fill fw-600"><i class="bi bi-pencil me-1"></i>{% if user.employee.id == employee.id %}Edit Profile{% else %}Edit{% endif %}</a>
+            {% endif %}
+            
+            {% if user.role == 'admin' or user.is_superuser %}
+            <form method="POST" action="{% url 'employee_reset_password' employee.pk %}" class="d-inline flex-fill">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-outline-secondary btn-sm w-100 fw-600" onclick="return confirm('Reset password to password123 for {{ employee.name }}?')">
+                <i class="bi bi-key"></i> Reset PW
+              </button>
+            </form>
+    
+            {% if employee.status == 'active' %}
+            <a href="{% url 'employee_delete' employee.pk %}" class="btn btn-outline-danger btn-sm" title="Deactivate"><i class="bi bi-person-x"></i></a>
+            {% else %}
+            <a href="{% url 'employee_delete' employee.pk %}" class="btn btn-outline-success btn-sm" title="Activate"><i class="bi bi-person-check"></i></a>
+            {% endif %}
+            {% endif %}
+          </div>
+        </div>
       </div>
     </div>
     <div class="card">

@@ -14,7 +14,6 @@ class StorageFacilityForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Only show storage managers in the dropdown
         self.fields['manager'].queryset = Employee.objects.filter(role='storage_manager', status='active')
 
 class ItemForm(forms.ModelForm):
@@ -24,10 +23,16 @@ class ItemForm(forms.ModelForm):
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Gypsum Board (Balath)'}),
             'category': forms.Select(attrs={'class': 'form-select'}),
-            'unit': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Pieces, Bags, SqFt'}),
+            'unit': forms.Select(attrs={'class': 'form-select'}),
             'unit_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Add selection prompts to dropdowns
+        self.fields['unit'].choices = [('', '-- Select Unit --')] + list(self.fields['unit'].choices)[1:]
+        self.fields['category'].choices = [('', '-- Select Category --')] + list(self.fields['category'].choices)[1:]
 
 class AddStockForm(forms.Form):
     item = forms.ModelChoiceField(

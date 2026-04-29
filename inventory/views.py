@@ -60,10 +60,16 @@ def storage_detail(request, pk):
             
             # Get or create the stock record for this storage
             stock, created = StorageStock.objects.get_or_create(storage=storage, item=item)
-            stock.quantity += qty_to_add
-            stock.save()
             
-            messages.success(request, f"Successfully updated stock for {item.name}.")
+            # Check for negative result
+            new_qty = stock.quantity + qty_to_add
+            if new_qty < 0:
+                messages.error(request, f"Cannot remove {abs(qty_to_add)} {item.unit} of {item.name}. Only {stock.quantity} available in stock.")
+            else:
+                stock.quantity = new_qty
+                stock.save()
+                messages.success(request, f"Successfully updated stock for {item.name}.")
+            
             return redirect('storage_detail', pk=storage.pk)
     else:
         form = AddStockForm()
@@ -200,9 +206,9 @@ def material_request_list(request):
         form = MaterialRequestForm(employee=request.user.employee)
 
     # Querying the requests list
-    if request.user.role == 'driver' or request.user.can_manage:
+    if request.user.role in ['driver', 'storage_manager'] or request.user.can_manage:
         requests_qs = MaterialRequest.objects.all()
-        # For drivers/admins, let them filter by any site
+        # For drivers/admins/storage managers, let them filter by any site
         from sites_mgmt.models import WorkSite
         sites = WorkSite.objects.filter(status='active').order_by('name')
     elif request.user.role == 'main_worker' and request.user.employee:

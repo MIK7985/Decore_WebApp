@@ -20,12 +20,11 @@ class EmployeeForm(forms.ModelForm):
         if self.user:
             # If not a manager, they are likely editing their own profile
             if not is_manager:
-                # Disable sensitive business fields for standard employees
+                # Remove sensitive business fields for standard employees
                 restricted_fields = ['name', 'role', 'daily_wage', 'assigned_site', 'joining_date', 'status', 'notes']
                 for field_name in restricted_fields:
                     if field_name in self.fields:
-                        self.fields[field_name].disabled = True
-                        self.fields[field_name].required = False
+                        del self.fields[field_name]
             
             # Non-admins cannot set roles to office_staff
             if getattr(self.user, 'role', '') != 'admin' and not getattr(self.user, 'is_superuser', False):

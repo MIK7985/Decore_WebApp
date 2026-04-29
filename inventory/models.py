@@ -19,19 +19,36 @@ class Item(models.Model):
         ('tool', 'Tool'),
         ('consumable', 'Consumable'),
     ]
+    UNIT_CHOICES = [
+        ('Bags', 'Bags'),
+        ('Pieces', 'Pieces'),
+        ('SqFt', 'SqFt'),
+        ('SqM', 'SqM'),
+        ('Kg', 'Kg'),
+        ('Litre', 'Litre'),
+        ('Bundle', 'Bundle'),
+        ('Box', 'Box'),
+        ('Pack', 'Pack'),
+        ('Roll', 'Roll'),
+        ('Set', 'Set'),
+        ('Feet', 'Feet'),
+        ('Metre', 'Metre'),
+        ('Other', 'Other'),
+    ]
     name = models.CharField(max_length=200)
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
-    unit = models.CharField(max_length=50, help_text="e.g., Bags, Pieces, SqFt")
+    unit = models.CharField(max_length=20, choices=UNIT_CHOICES)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Cost per unit (visible only to admin/managers)")
     description = models.TextField(blank=True)
 
     def __str__(self):
         return f"{self.name} ({self.get_category_display()})"
+from django.core.validators import MinValueValidator
 
 class StorageStock(models.Model):
     storage = models.ForeignKey(StorageFacility, on_delete=models.CASCADE, related_name='stocks')
     item = models.ForeignKey(Item, on_delete=models.CASCADE)
-    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
     last_updated = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -43,7 +60,7 @@ class StorageStock(models.Model):
 class SiteStock(models.Model):
     site = models.ForeignKey(WorkSite, on_delete=models.CASCADE, related_name='inventory')
     item = models.ForeignKey(Item, on_delete=models.CASCADE)
-    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(0)])
     last_updated = models.DateTimeField(auto_now=True)
 
     class Meta:

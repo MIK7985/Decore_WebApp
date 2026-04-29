@@ -187,9 +187,9 @@
     /* === BADGES === */
     .badge { padding: 0.6em 1em; border-radius: 8px; font-weight: 600; font-size: 0.75rem; letter-spacing: 0.5px; }
     .badge.bg-light.text-dark { background: rgba(255,255,255,0.9)!important; border: 1px solid rgba(0,0,0,0.05)!important; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
-    .badge-active, .badge-present { background: rgba(16, 185, 129, 0.15); color: #065F46; border: 1px solid rgba(16, 185, 129, 0.2); }
-    .badge-inactive, .badge-absent { background: rgba(239, 68, 68, 0.15); color: #991B1B; border: 1px solid rgba(239, 68, 68, 0.2); }
-    .badge-half_day { background: rgba(245, 158, 11, 0.15); color: #92400E; border: 1px solid rgba(245, 158, 11, 0.2); }
+    .badge-active, .badge-present { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-inactive, .badge-absent { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-half_day { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
     
     /* === BUTTONS & INPUTS === */
     .btn { border-radius: 12px; font-weight: 600; padding: 0.6rem 1.5rem; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
@@ -336,10 +336,19 @@
       flex: 1; height: 100%; transition: all 0.3s;
     }
     .bottom-nav-item i { font-size: 1.35rem; margin-bottom: 2px; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-    .bottom-nav-item.active { color: var(--primary); }
-    .bottom-nav-item.active i { transform: translateY(-3px) scale(1.1); color: var(--primary); }
-    [data-bs-theme="dark"] .bottom-nav-item.active { color: var(--primary-light); }
-    [data-bs-theme="dark"] .bottom-nav-item.active i { color: var(--primary-light); }
+    .bottom-nav-item.active { 
+      color: var(--primary) !important; 
+      font-weight: 800;
+    }
+    .bottom-nav-item.active i { 
+      transform: translateY(-5px) scale(1.25); 
+      color: var(--primary) !important; 
+    }
+    .bottom-nav-item.active span {
+      font-size: 0.75rem;
+    }
+    [data-bs-theme="dark"] .bottom-nav-item.active { color: var(--primary-light) !important; }
+    [data-bs-theme="dark"] .bottom-nav-item.active i { color: var(--primary-light) !important; }
     
     /* === ANIMATIONS === */
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -431,8 +440,11 @@
         <i class="bi bi-list-check text-info"></i> My Requests
       </a>
       {% elif user.role == 'storage_manager' %}
-      <a href="{% url 'storage_list' %}" class="sidebar-link {% if 'storage' in request.resolver_match.url_name or 'inventory' in request.resolver_match.url_name %}active{% endif %}">
+      <a href="{% url 'storage_list' %}" class="sidebar-link {% if 'storage' in request.resolver_match.url_name %}active{% endif %}">
         <i class="bi bi-box-seam"></i> My Storages
+      </a>
+      <a href="{% url 'material_request_list' %}" class="sidebar-link {% if 'material_request' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="bi bi-list-check text-info"></i> Material Requests
       </a>
       {% elif user.role == 'driver' %}
       <a href="{% url 'material_request_list' %}" class="sidebar-link {% if 'material' in request.resolver_match.url_name %}active{% endif %}">
@@ -554,38 +566,55 @@
     <i class="bi bi-grid"></i><span>Menu</span>
   </a>
   {% else %}
-  {% if user.role == 'main_worker' %}
-  <a href="{% url 'worker_sites' %}" class="bottom-nav-item {% if 'worker_sites' in request.resolver_match.url_name or 'site_detail' in request.resolver_match.url_name %}active{% endif %}">
-    <i class="bi bi-building"></i><span>Sites</span>
-  </a>
-  {% elif user.role == 'storage_manager' %}
-  <a href="{% url 'storage_list' %}" class="bottom-nav-item {% if 'storage' in request.resolver_match.url_name %}active{% endif %}">
-    <i class="bi bi-box-seam"></i><span>Storage</span>
-  </a>
-  {% elif user.role == 'driver' %}
-  <a href="{% url 'delivery_log_list' %}" class="bottom-nav-item {% if 'delivery' in request.resolver_match.url_name %}active{% endif %}">
-    <i class="bi bi-truck"></i><span>Deliveries</span>
-  </a>
-  {% else %}
-  <a href="{% if user.employee %}{% url 'employee_detail' user.employee.pk %}{% else %}#{% endif %}" class="bottom-nav-item {% if 'employee_detail' in request.resolver_match.url_name %}active{% endif %}">
-    <i class="bi bi-house"></i><span>Home</span>
-  </a>
-  {% endif %}
-  
-  <a href="{% url 'material_request_list' %}" class="bottom-nav-item {% if 'material_request' in request.resolver_match.url_name %}active{% endif %}">
-    <i class="bi bi-list-check"></i><span>Requests</span>
-  </a>
-  <a href="{% url 'mark_attendance' %}" class="bottom-nav-item {% if request.resolver_match.url_name == 'mark_attendance' %}active{% endif %}">
-    <i class="bi bi-pencil-square"></i><span>Mark</span>
-  </a>
-  {% if user.employee %}
-  <a href="{% url 'employee_detail' user.employee.pk %}" class="bottom-nav-item {% if 'employee' in request.resolver_match.url_name %}active{% endif %}">
-    <i class="bi bi-person"></i><span>Profile</span>
-  </a>
-  {% endif %}
-  <a href="#" class="bottom-nav-item" id="bottomMenuToggle">
-    <i class="bi bi-grid"></i><span>Menu</span>
-  </a>
+    {% if user.role == 'helper' %}
+      <a href="{% url 'request_advance' %}" class="bottom-nav-item {% if request.resolver_match.url_name == 'request_advance' %}active{% endif %}">
+        <i class="bi bi-wallet2"></i><span>Advance</span>
+      </a>
+      <a href="{% if user.employee %}{% url 'employee_attendance' user.employee.pk %}{% else %}#{% endif %}" class="bottom-nav-item {% if 'attendance' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="bi bi-clock-history"></i><span>History</span>
+      </a>
+      <a href="{% url 'mark_attendance' %}" class="bottom-nav-item {% if request.resolver_match.url_name == 'mark_attendance' %}active{% endif %}">
+        <i class="bi bi-pencil-square"></i><span>Mark</span>
+      </a>
+      {% if user.employee %}
+      <a href="{% url 'employee_detail' user.employee.pk %}" class="bottom-nav-item {% if 'employee_detail' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="bi bi-person"></i><span>Profile</span>
+      </a>
+      {% endif %}
+    {% else %}
+      {% if user.role == 'main_worker' %}
+      <a href="{% url 'worker_sites' %}" class="bottom-nav-item {% if 'worker_sites' in request.resolver_match.url_name or 'site_detail' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="bi bi-building"></i><span>Sites</span>
+      </a>
+      {% elif user.role == 'storage_manager' %}
+      <a href="{% url 'storage_list' %}" class="bottom-nav-item {% if 'storage' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="bi bi-box-seam"></i><span>Storage</span>
+      </a>
+      {% elif user.role == 'driver' %}
+      <a href="{% url 'delivery_log_list' %}" class="bottom-nav-item {% if 'delivery' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="bi bi-truck"></i><span>Deliveries</span>
+      </a>
+      {% else %}
+      <a href="{% if user.employee %}{% url 'employee_detail' user.employee.pk %}{% else %}#{% endif %}" class="bottom-nav-item {% if 'employee_detail' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="bi bi-house"></i><span>Home</span>
+      </a>
+      {% endif %}
+      
+      <a href="{% url 'material_request_list' %}" class="bottom-nav-item {% if 'material_request' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="bi bi-list-check"></i><span>Requests</span>
+      </a>
+      <a href="{% url 'mark_attendance' %}" class="bottom-nav-item {% if request.resolver_match.url_name == 'mark_attendance' %}active{% endif %}">
+        <i class="bi bi-pencil-square"></i><span>Mark</span>
+      </a>
+      {% if user.employee %}
+      <a href="{% url 'employee_detail' user.employee.pk %}" class="bottom-nav-item {% if 'employee_detail' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="bi bi-person"></i><span>Profile</span>
+      </a>
+      {% endif %}
+      <a href="#" class="bottom-nav-item" id="bottomMenuToggle">
+        <i class="bi bi-grid"></i><span>Menu</span>
+      </a>
+    {% endif %}
   {% endif %}
 </nav>
 
