@@ -55,22 +55,36 @@
           <!-- Items Formset -->
           <h6 class="fw-bold text-dark mb-3"><i class="bi bi-boxes me-2 text-primary"></i> Items Delivered</h6>
           
+          {% if formset.non_form_errors %}
+          <div class="alert alert-danger py-2 small fw-600">
+            {{ formset.non_form_errors }}
+          </div>
+          {% endif %}
+          
           {{ formset.management_form }}
           <div id="items-container">
             {% for inline_form in formset %}
-            <div class="item-form-row bg-light rounded-3 p-3 mb-3 position-relative border" {% if forloop.counter > 1 %}style="display:none;"{% endif %}>
+            <div class="item-form-row bg-light rounded-3 p-3 mb-3 position-relative border" {% if forloop.counter > 1 and not inline_form.instance.pk and not inline_form.errors %}style="display:none;"{% endif %}>
               {% for hidden in inline_form.hidden_fields %}
                 {{ hidden }}
               {% endfor %}
               
               <div class="row g-2 align-items-center">
-                <div class="col-8 col-sm-9">
+                <div class="col-7 col-sm-8">
                   <label class="form-label text-muted small fw-600 mb-1">Select Item</label>
                   {{ inline_form.item }}
                 </div>
-                <div class="col-4 col-sm-3">
+                <div class="col-3 col-sm-3">
                   <label class="form-label text-muted small fw-600 mb-1">Quantity</label>
                   {{ inline_form.quantity }}
+                </div>
+                <div class="col-2 col-sm-1 d-flex align-items-end justify-content-center pb-1">
+                  {% if formset.can_delete %}
+                    <div class="d-none">{{ inline_form.DELETE }}</div>
+                  {% endif %}
+                  <button type="button" class="btn btn-sm btn-link text-danger p-0 remove-item-btn mt-4" title="Remove Item">
+                    <i class="bi bi-trash fs-5"></i>
+                  </button>
                 </div>
               </div>
               
@@ -107,18 +121,14 @@
     const container = document.getElementById('items-container');
     const rows = container.querySelectorAll('.item-form-row');
     const addBtn = document.getElementById('addItemBtn');
-    let visibleCount = 1;
     const maxForms = {{ formset.total_form_count }};
+    let visibleCount = Array.from(rows).filter(r => r.style.display !== 'none').length;
+    
+    if (visibleCount >= maxForms) {
+        addBtn.style.display = 'none';
+    }
 
-    // Make sure the first row is always visible, and hide the rest
-    rows.forEach((row, index) => {
-      if (index === 0) {
-        row.style.display = 'block';
-      } else {
-        row.style.display = 'none';
-      }
-    });
-
+    // Handle adding items
     addBtn.addEventListener('click', function() {
       if (visibleCount < maxForms) {
         rows[visibleCount].style.display = 'block';
@@ -127,6 +137,26 @@
         
         if (visibleCount >= maxForms) {
           addBtn.style.display = 'none';
+        }
+      }
+    });
+
+    // Handle removing items
+    container.addEventListener('click', function(e) {
+      const btn = e.target.closest('.remove-item-btn');
+      if (btn) {
+        const row = btn.closest('.item-form-row');
+        const deleteCb = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+        if (deleteCb) {
+          deleteCb.checked = true;
+          row.style.display = 'none';
+        } else {
+          // Clear inputs
+          const selects = row.querySelectorAll('select');
+          const inputs = row.querySelectorAll('input:not([type="hidden"])');
+          selects.forEach(s => s.value = '');
+          inputs.forEach(i => i.value = '');
+          row.style.display = 'none';
         }
       }
     });

@@ -108,4 +108,5 @@ class DeliveryLogItemForm(forms.ModelForm):
             raise forms.ValidationError("Quantity must be greater than zero.")
         return qty
 
-
+class DeliveryLogItemFormSet(forms.BaseInlineFormSet):
+    pass

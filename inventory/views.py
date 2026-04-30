@@ -2,8 +2,28 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import StorageFacility, Item, StorageStock, MaterialRequest, DeliveryLog, DeliveryLogItem
-from .forms import StorageFacilityForm, ItemForm, AddStockForm, MaterialRequestForm, DeliveryLogForm, DeliveryLogItemForm
+from .forms import StorageFacilityForm, ItemForm, AddStockForm, MaterialRequestForm, DeliveryLogForm, DeliveryLogItemForm, DeliveryLogItemFormSet
 from django.forms import inlineformset_factory
+from django.db.models import Sum
+
+def sync_material_requests(site, item):
+    """Self-healing function to accurately sync material requests based on all deliveries"""
+    total_delivered = DeliveryLogItem.objects.filter(log__site=site, item=item).aggregate(Sum('quantity'))['quantity__sum'] or 0
+    requests = MaterialRequest.objects.filter(site=site, item=item).exclude(status='cancelled').order_by('created_at')
+    
+    remaining = total_delivered
+    for req in requests:
+        req.delivered_quantity = min(remaining, req.quantity)
+        if req.delivered_quantity >= req.quantity:
+            req.status = 'fulfilled'
+        elif req.delivered_quantity > 0:
+            req.status = 'partial'
+        else:
+            req.status = 'pending'
+        req.save()
+        remaining -= req.delivered_quantity
+        if remaining <= 0:
+            remaining = 0
 
 @login_required
 def storage_list(request):
@@ -271,7 +291,23 @@ def delivery_log_list(request):
     else:
         logs = DeliveryLog.objects.all().order_by('-date', '-created_at')
         
-    return render(request, 'inventory/delivery_log_list.html', {'logs': logs})
+    site_id = request.GET.get('site')
+    date_filter = request.GET.get('date')
+    
+    if site_id:
+        logs = logs.filter(site_id=site_id)
+    if date_filter:
+        logs = logs.filter(date=date_filter)
+        
+    from sites_mgmt.models import WorkSite
+    sites = WorkSite.objects.filter(status='active')
+        
+    return render(request, 'inventory/delivery_log_list.html', {
+        'logs': logs,
+        'sites': sites,
+        'current_site': site_id,
+        'current_date': date_filter
+    })
 
 @login_required
 def delivery_log_create(request):
@@ -282,6 +318,7 @@ def delivery_log_create(request):
     DeliveryItemFormSet = inlineformset_factory(
         DeliveryLog, DeliveryLogItem, 
         form=DeliveryLogItemForm,
+        formset=DeliveryLogItemFormSet,
         extra=5, can_delete=False
     )
     
@@ -328,9 +365,23 @@ def delivery_log_create(request):
                 log.save()
                 
                 # Process each item manually for automations
-                instances = formset.save(commit=False)
-                for delivery_item in instances:
+                formset.save(commit=False) # Populates deleted_objects if any
+                
+                # Combine duplicates
+                combined_items = {}
+                for inline_form in formset:
+                    if not inline_form.cleaned_data or inline_form.cleaned_data.get('DELETE', False):
+                        continue
+                    
+                    delivery_item = inline_form.instance
                     delivery_item.log = log
+                    
+                    if delivery_item.item_id in combined_items:
+                        combined_items[delivery_item.item_id].quantity += delivery_item.quantity
+                    else:
+                        combined_items[delivery_item.item_id] = delivery_item
+                
+                for delivery_item in combined_items.values():
                     delivery_item.save()
                     
                     # Automation 1: Deduct from Storage Inventory
@@ -342,33 +393,7 @@ def delivery_log_create(request):
                         stock.save()
                         
                     # Automation 2: Auto-Fulfill Pending Material Requests
-                    remaining_delivery = delivery_item.quantity
-                    pending_requests = MaterialRequest.objects.filter(
-                        site=log.site, 
-                        item=delivery_item.item, 
-                        status__in=['pending', 'partial']
-                    ).order_by('created_at')
-                    
-                    for req in pending_requests:
-                        if remaining_delivery <= 0:
-                            break
-                            
-                        needed = req.quantity - req.delivered_quantity
-                        if needed <= 0:
-                            req.status = 'fulfilled'
-                            req.save()
-                            continue
-                            
-                        if remaining_delivery >= needed:
-                            req.delivered_quantity = req.quantity
-                            req.status = 'fulfilled'
-                            req.save()
-                            remaining_delivery -= needed
-                        else:
-                            req.delivered_quantity += remaining_delivery
-                            req.status = 'partial'
-                            req.save()
-                            remaining_delivery = 0
+                    sync_material_requests(log.site, delivery_item.item)
                 
                 messages.success(request, f"Delivery to {log.site.name} recorded successfully. Inventory & Requests automatically updated.")
                 return redirect('delivery_log_list')
@@ -391,6 +416,7 @@ def delivery_log_edit(request, pk):
     DeliveryItemFormSet = inlineformset_factory(
         DeliveryLog, DeliveryLogItem, 
         form=DeliveryLogItemForm,
+        formset=DeliveryLogItemFormSet,
         extra=1, can_delete=True
     )
     
@@ -410,11 +436,15 @@ def delivery_log_edit(request, pk):
             if not has_items:
                 messages.error(request, "You must include at least one item.")
             else:
+                old_site = log.site
+                items_to_sync = set()
+                
                 updated_log = form.save()
                 instances = formset.save(commit=False)
                 
                 # Handle deleted items
                 for obj in formset.deleted_objects:
+                    items_to_sync.add(obj.item)
                     if old_source:
                         stock = StorageStock.objects.filter(storage=old_source, item=obj.item).first()
                         if stock:
@@ -422,8 +452,29 @@ def delivery_log_edit(request, pk):
                             stock.save()
                     obj.delete()
                     
-                # Handle edited/new items
-                for instance in instances:
+                # Handle edited/new items by combining duplicates
+                combined_instances = {}
+                for inline_form in formset:
+                    if not inline_form.cleaned_data or inline_form.cleaned_data.get('DELETE', False):
+                        continue
+                        
+                    instance = inline_form.instance
+                    instance.log = updated_log
+                    
+                    if instance.item_id in combined_instances:
+                        combined_instances[instance.item_id].quantity += instance.quantity
+                        if instance.pk:
+                            # Revert old stock before deleting this duplicate row
+                            if old_source and instance.pk in old_items:
+                                stock = StorageStock.objects.filter(storage=old_source, item=instance.item).first()
+                                if stock:
+                                    stock.quantity += old_items[instance.pk]
+                                    stock.save()
+                            instance.delete()
+                    else:
+                        combined_instances[instance.item_id] = instance
+                
+                for instance in combined_instances.values():
                     diff = instance.quantity
                     if instance.pk and instance.pk in old_items:
                         diff = instance.quantity - old_items[instance.pk]
@@ -434,6 +485,14 @@ def delivery_log_edit(request, pk):
                         stock, _ = StorageStock.objects.get_or_create(storage=updated_log.source_storage, item=instance.item)
                         stock.quantity -= diff
                         stock.save()
+                        
+                    items_to_sync.add(instance.item)
+                
+                # Sync material requests for all affected items at both old and new sites
+                for item in items_to_sync:
+                    sync_material_requests(old_site, item)
+                    if updated_log.site != old_site:
+                        sync_material_requests(updated_log.site, item)
                 
                 messages.success(request, "Delivery updated successfully.")
                 return redirect('delivery_log_list')

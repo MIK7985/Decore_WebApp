@@ -5,7 +5,7 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
   <div><h5 class="mb-0 fw-700">Attendance</h5><small class="text-muted">Daily work records</small></div>
   <div class="d-flex gap-2">
-    <a href="{% url 'download_attendance_pdf' %}?date={{ date_filter }}&month={{ month_filter }}&site={{ site_filter }}&employee={{ emp_filter }}" class="btn btn-outline-danger fw-600" target="_blank"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+    <a href="{% url 'download_attendance_pdf' %}?date={{ date_filter }}&month={{ month_filter }}&site={{ site_filter }}&employee={{ emp_filter }}" class="btn btn-outline-danger fw-600" download><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
     {% if not user.is_accountant %}
     <a href="{% url 'mark_attendance' %}" class="btn btn-primary"><i class="bi bi-pencil-square me-1"></i>Mark Attendance</a>
     {% endif %}

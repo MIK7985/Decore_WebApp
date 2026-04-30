@@ -15,26 +15,34 @@
     const savedTheme = localStorage.getItem('theme') || 'dark';
     if(savedTheme === 'dark') document.documentElement.setAttribute('data-bs-theme', 'dark');
     
-    // Robust FOUC prevention for translation
-    if (document.cookie.indexOf('googtrans=/en/ml') !== -1) {
-      document.write('<style id="translate-fouc">body { opacity: 0 !important; visibility: hidden !important; }</style>');
-      
-      const observer = new MutationObserver((mutations, obs) => {
-        if (document.documentElement.classList.contains('translated-ltr')) {
-          const style = document.getElementById('translate-fouc');
-          if (style) style.remove();
-          obs.disconnect();
-        }
-      });
-      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-      
-      // Fallback
-      setTimeout(() => {
-        const style = document.getElementById('translate-fouc');
-        if (style) style.remove();
-      }, 2500);
-    }
+    // iOS Dynamic Splash Screen Generator
+    (function() {
+      if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream) {
+        var img = new Image();
+        img.onload = function() {
+          var canvas = document.createElement('canvas');
+          canvas.width = window.screen.width * window.devicePixelRatio;
+          canvas.height = window.screen.height * window.devicePixelRatio;
+          var ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          var imgWidth = Math.min(canvas.width * 0.5, 400); // Logo width
+          var imgHeight = imgWidth * (img.height / img.width);
+          var x = (canvas.width - imgWidth) / 2;
+          var y = (canvas.height - imgHeight) / 2;
+          ctx.drawImage(img, x, y, imgWidth, imgHeight);
+          var link = document.createElement('link');
+          link.rel = 'apple-touch-startup-image';
+          link.href = canvas.toDataURL('image/png');
+          document.head.appendChild(link);
+        };
+        img.src = "{% static 'img/Logo-removebg-preview (1).png' %}";
+      }
+    })();
+
   </script>
+  <link rel="preconnect" href="https://translate.googleapis.com">
+  <link rel="preconnect" href="https://translate.google.com">
   <title>{% block title %}Decore Developers{% endblock %} | POP Work Management</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
@@ -376,8 +384,44 @@
 
   </style>
   {% block extra_css %}{% endblock %}
+
+  <!-- Language Translation Script (Google Translate) -->
+  <style>
+    /* Hide the default Google Translate toolbar and widget */
+    .skiptranslate iframe { display: none !important; }
+    body { top: 0 !important; }
+    #google_translate_element { display: none !important; }
+    .goog-te-banner-frame.skiptranslate { display: none !important; } 
+  </style>
+  <script type="text/javascript">
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement({
+        pageLanguage: 'en', 
+        includedLanguages: 'en,ml', 
+        autoDisplay: false
+      }, 'google_translate_element');
+    }
+    
+    function setLanguage(lang) {
+      var domain = window.location.hostname;
+      // Clear existing cookies
+      document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=" + domain;
+      document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=." + domain;
+      
+      // Set new cookie if translating
+      if (lang !== 'en') {
+        document.cookie = `googtrans=/en/${lang}; path=/; domain=${domain}`;
+        document.cookie = `googtrans=/en/${lang}; path=/`; 
+        document.cookie = `googtrans=/en/${lang}; path=/; domain=.${domain}`; 
+      }
+      window.location.reload();
+    }
+  </script>
+  <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async defer></script>
 </head>
 <body>
+<div id="google_translate_element"></div>
 
 {% if user.is_authenticated %}
 <!-- Sidebar -->
@@ -716,40 +760,5 @@
     }, true);
   </script>
   
-  <!-- Language Translation Script (Google Translate) -->
-  <style>
-    /* Hide the default Google Translate toolbar and widget */
-    .skiptranslate iframe { display: none !important; }
-    body { top: 0 !important; }
-    #google_translate_element { display: none !important; }
-    .goog-te-banner-frame.skiptranslate { display: none !important; } 
-  </style>
-  <div id="google_translate_element"></div>
-  <script type="text/javascript">
-    function googleTranslateElementInit() {
-      new google.translate.TranslateElement({
-        pageLanguage: 'en', 
-        includedLanguages: 'en,ml', 
-        autoDisplay: false
-      }, 'google_translate_element');
-    }
-    
-    function setLanguage(lang) {
-      var domain = window.location.hostname;
-      // Clear existing cookies
-      document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=" + domain;
-      document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=." + domain;
-      
-      // Set new cookie if translating
-      if (lang !== 'en') {
-        document.cookie = `googtrans=/en/${lang}; path=/; domain=${domain}`;
-        document.cookie = `googtrans=/en/${lang}; path=/`; 
-        document.cookie = `googtrans=/en/${lang}; path=/; domain=.${domain}`; 
-      }
-      window.location.reload();
-    }
-  </script>
-  <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>

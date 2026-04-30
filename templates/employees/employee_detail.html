@@ -84,7 +84,7 @@
       <div class="card-body border-top py-3">
         <div class="d-flex justify-content-center">
           <div class="row g-2 text-sm text-start" style="max-width: fit-content;">
-            <div class="col-12"><i class="bi bi-telephone text-primary me-2 opacity-75"></i>{{ employee.phone }}</div>
+            <div class="col-12"><i class="bi bi-telephone text-primary me-2 opacity-75"></i><a href="tel:{{ employee.phone }}" class="text-decoration-none text-dark">{{ employee.phone }}</a></div>
             <div class="col-12"><i class="bi bi-geo-alt text-primary me-2 opacity-75"></i>{{ employee.address }}</div>
             <div class="col-12"><i class="bi bi-calendar-event text-primary me-2 opacity-75"></i>Joined {{ employee.joining_date|date:"M d, Y" }}</div>
             <div class="col-12"><i class="bi bi-currency-rupee text-primary me-1 opacity-75"></i>₹{{ employee.daily_wage }}/day</div>
