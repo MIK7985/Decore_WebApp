@@ -22,15 +22,27 @@
       window.location.href = "{% url 'dashboard' %}";
     {% endif %}
 
-    // Prevent Flash of Untranslated Content
+    // Robust FOUC prevention for translation
     if (document.cookie.indexOf('googtrans=/en/ml') !== -1) {
-      document.documentElement.classList.add('translating');
-      setTimeout(function() { document.documentElement.classList.remove('translating'); }, 1500);
+      document.write('<style id="translate-fouc">body { opacity: 0 !important; visibility: hidden !important; }</style>');
+      
+      const observer = new MutationObserver((mutations, obs) => {
+        if (document.documentElement.classList.contains('translated-ltr')) {
+          const style = document.getElementById('translate-fouc');
+          if (style) style.remove();
+          obs.disconnect();
+        }
+      });
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+      
+      // Fallback
+      setTimeout(() => {
+        const style = document.getElementById('translate-fouc');
+        if (style) style.remove();
+      }, 2500);
     }
   </script>
   <style>
-    html.translating body { opacity: 0; }
-    html.translated-ltr body { opacity: 1 !important; transition: opacity 0.3s ease; }
 
     :root {
       --primary: #4f46e5;
