@@ -71,7 +71,7 @@ def salary_list(request):
         working_days = Decimal(str(sum(1 if r.status == 'present' else 0.5 if r.status == 'half_day' else 0 for r in att_records)))
         
         unapplied_advances = AdvanceRequest.objects.filter(employee=emp, status='approved', salary_summary__isnull=True)
-        advance_total = sum(a.amount for a in unapplied_advances)
+        advance_total = sum(a.get_final_amount for a in unapplied_advances)
         
         summary = SalarySummary.objects.filter(employee=emp, start_date=start_date, end_date=end_date).first()
         if summary:
@@ -175,7 +175,7 @@ def download_salary_report(request):
 def download_salary_pdf(request):
     from django.http import HttpResponse
     from reportlab.lib import colors
-    from reportlab.lib.pagesizes import letter, landscape
+    from reportlab.lib.pagesizes import letter, portrait
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     import calendar
@@ -195,30 +195,28 @@ def download_salary_pdf(request):
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="salary_report_week_{end_date_str}.pdf"'
     
-    doc = SimpleDocTemplate(response, pagesize=landscape(letter))
+    doc = SimpleDocTemplate(response, pagesize=portrait(letter))
     elements = []
     
     styles = getSampleStyleSheet()
     
     # Create Header Table (Logo + Title)
-    # Prefer Logo.png as it might have a cleaner white background than the removebg one which turns black in PDF
     logo_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'Logo.png')
     if not os.path.exists(logo_path):
         logo_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'Logo-removebg-preview (1).png')
         
     header_data = []
     
-    title_html = f"<font size=26 color='#0f172a'><b>Decore Developers</b></font><br/><br/><font size=12 color='#64748b'><b>OFFICIAL WEEKLY SALARY REPORT</b> &nbsp;&nbsp;|&nbsp;&nbsp; {start_date.strftime('%b %d, %Y')} to {end_date.strftime('%b %d, %Y')}</font>"
+    title_html = f"<font size=20 color='#0f172a'><b>Decore Developers</b></font><br/><br/><font size=10 color='#64748b'><b>OFFICIAL WEEKLY SALARY REPORT</b> &nbsp;&nbsp;|&nbsp;&nbsp; {start_date.strftime('%b %d, %Y')} to {end_date.strftime('%b %d, %Y')}</font>"
     title_p = Paragraph(title_html, styles['Normal'])
     
     if os.path.exists(logo_path):
-        # Use mask='auto' to fix black background issues with transparent PNGs
-        img = Image(logo_path, width=80, height=80, mask='auto')
+        img = Image(logo_path, width=70, height=70, mask='auto')
         header_data.append([img, title_p])
-        header_table = Table(header_data, colWidths=[100, 500])
+        header_table = Table(header_data, colWidths=[80, 420])
     else:
         header_data.append([title_p])
-        header_table = Table(header_data, colWidths=[600])
+        header_table = Table(header_data, colWidths=[500])
         
     header_table.setStyle(TableStyle([
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
@@ -229,28 +227,31 @@ def download_salary_pdf(request):
     elements.append(header_table)
     elements.append(Spacer(1, 15))
     
-    data = [['Employee Name', 'Daily Wage', 'Working Days', 'Total Amount', 'Paid', 'Pending']]
+    data = [['Employee Name', 'Wage', 'Days', 'Total', 'Advance', 'Paid', 'Pending']]
     
     summaries = SalarySummary.objects.filter(end_date=end_date).select_related('employee')
     total_payable = 0
+    total_advance = 0
     total_paid = 0
     total_pending = 0
     for s in summaries:
         data.append([
             s.employee.name,
-            f"Rs.{s.daily_wage:.2f}",
+            f"{s.daily_wage:.0f}",
             str(s.working_days),
-            f"Rs.{s.net_payable:.2f}",
-            f"Rs.{s.total_paid:.2f}",
-            f"Rs.{s.pending_amount:.2f}",
+            f"{s.net_payable + s.deductions:.0f}",
+            f"{s.deductions:.0f}",
+            f"{s.total_paid:.0f}",
+            f"{s.pending_amount:.0f}",
         ])
-        total_payable += s.net_payable
+        total_payable += (s.net_payable + s.deductions)
+        total_advance += s.deductions
         total_paid += s.total_paid
         total_pending += s.pending_amount
         
-    data.append(['TOTAL', '', '', f"Rs.{total_payable:.2f}", f"Rs.{total_paid:.2f}", f"Rs.{total_pending:.2f}"])
+    data.append(['TOTAL', '', '', f"Rs.{total_payable:.0f}", f"Rs.{total_advance:.0f}", f"Rs.{total_paid:.0f}", f"Rs.{total_pending:.0f}"])
         
-    table = Table(data, colWidths=[160, 80, 80, 100, 100, 100])
+    table = Table(data, colWidths=[120, 50, 40, 60, 65, 65, 70])
     table.setStyle(TableStyle([
         # Header Row
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#0f172a")),
@@ -382,17 +383,26 @@ def update_advance(request, pk):
     if request.method == 'POST':
         status = request.POST.get('status')
         admin_notes = request.POST.get('admin_notes', '')
+        approved_amount_str = request.POST.get('approved_amount', '')
         
         if status in ['approved', 'rejected']:
+            if status == 'approved':
+                try:
+                    if approved_amount_str:
+                        adv.approved_amount = Decimal(approved_amount_str)
+                    else:
+                        adv.approved_amount = adv.amount
+                except Exception:
+                    messages.error(request, "Invalid approved amount.")
+                    return redirect('advance_list')
+            else:
+                adv.approved_amount = None
+                
             adv.status = status
             adv.admin_notes = admin_notes
             adv.approved_by = request.user
             adv.save()
             messages.success(request, f'Advance request {status}.')
-            
-            # Note: The admin will need to manually add this approved advance 
-            # to the "Deductions" when editing the weekly SalarySummary.
-            # (In a more complex system, this could auto-apply to the next salary).
             
         return redirect('advance_list')
     return render(request, 'salary/advance_edit.html', {'adv': adv})

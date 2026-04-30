@@ -50,6 +50,7 @@ class AdvanceRequest(models.Model):
     ]
     employee = models.ForeignKey('employees.Employee', on_delete=models.CASCADE, related_name='advance_requests')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
+    approved_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Amount approved by admin. If blank, full amount is assumed.")
     reason = models.TextField()
     request_date = models.DateField(default=timezone.now)
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='pending')
@@ -63,3 +64,7 @@ class AdvanceRequest(models.Model):
 
     def __str__(self):
         return f"{self.employee.name} - ₹{self.amount} ({self.get_status_display()})"
+
+    @property
+    def get_final_amount(self):
+        return self.approved_amount if self.approved_amount is not None else self.amount
