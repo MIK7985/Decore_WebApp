@@ -99,7 +99,13 @@ class DeliveryLogItemForm(forms.ModelForm):
         fields = ['item', 'quantity']
         widgets = {
             'item': forms.Select(attrs={'class': 'form-select item-select'}),
-            'quantity': forms.NumberInput(attrs={'class': 'form-control quantity-input', 'step': 'any', 'placeholder': 'Qty'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control quantity-input', 'step': 'any', 'min': '0.01', 'placeholder': 'Qty'}),
         }
+        
+    def clean_quantity(self):
+        qty = self.cleaned_data.get('quantity')
+        if qty is not None and qty <= 0:
+            raise forms.ValidationError("Quantity must be greater than zero.")
+        return qty
 
 

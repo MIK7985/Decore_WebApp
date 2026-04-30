@@ -380,3 +380,70 @@ def delivery_log_create(request):
         'form': form,
         'formset': formset
     })
+
+@login_required
+def delivery_log_edit(request, pk):
+    log = get_object_or_404(DeliveryLog, pk=pk)
+    if request.user.role != 'driver' and not request.user.can_manage:
+        messages.error(request, "Permission denied.")
+        return redirect('delivery_log_list')
+        
+    DeliveryItemFormSet = inlineformset_factory(
+        DeliveryLog, DeliveryLogItem, 
+        form=DeliveryLogItemForm,
+        extra=1, can_delete=True
+    )
+    
+    old_items = {item.id: item.quantity for item in log.items.all()}
+    old_source = log.source_storage
+    
+    if request.method == 'POST':
+        form = DeliveryLogForm(request.POST, instance=log)
+        formset = DeliveryItemFormSet(request.POST, instance=log)
+        if form.is_valid() and formset.is_valid():
+            has_items = False
+            for inline_form in formset:
+                if inline_form.cleaned_data and not inline_form.cleaned_data.get('DELETE', False):
+                    has_items = True
+                    break
+            
+            if not has_items:
+                messages.error(request, "You must include at least one item.")
+            else:
+                updated_log = form.save()
+                instances = formset.save(commit=False)
+                
+                # Handle deleted items
+                for obj in formset.deleted_objects:
+                    if old_source:
+                        stock = StorageStock.objects.filter(storage=old_source, item=obj.item).first()
+                        if stock:
+                            stock.quantity += obj.quantity
+                            stock.save()
+                    obj.delete()
+                    
+                # Handle edited/new items
+                for instance in instances:
+                    diff = instance.quantity
+                    if instance.pk and instance.pk in old_items:
+                        diff = instance.quantity - old_items[instance.pk]
+                        
+                    instance.save()
+                    
+                    if updated_log.source_storage:
+                        stock, _ = StorageStock.objects.get_or_create(storage=updated_log.source_storage, item=instance.item)
+                        stock.quantity -= diff
+                        stock.save()
+                
+                messages.success(request, "Delivery updated successfully.")
+                return redirect('delivery_log_list')
+    else:
+        form = DeliveryLogForm(instance=log)
+        formset = DeliveryItemFormSet(instance=log)
+        
+    return render(request, 'inventory/delivery_log_form.html', {
+        'form': form,
+        'formset': formset,
+        'is_edit': True
+    })
+

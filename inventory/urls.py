@@ -14,4 +14,5 @@ urlpatterns = [
     path('requests/<int:pk>/status/', views.material_request_update_status, name='material_request_update_status'),
     path('deliveries/', views.delivery_log_list, name='delivery_log_list'),
     path('deliveries/add/', views.delivery_log_create, name='delivery_log_create'),
+    path('deliveries/<int:pk>/edit/', views.delivery_log_edit, name='delivery_log_edit'),
 ]
