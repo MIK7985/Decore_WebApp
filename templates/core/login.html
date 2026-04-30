@@ -21,8 +21,17 @@
     {% if user.is_authenticated %}
       window.location.href = "{% url 'dashboard' %}";
     {% endif %}
+
+    // Prevent Flash of Untranslated Content
+    if (document.cookie.indexOf('googtrans=/en/ml') !== -1) {
+      document.documentElement.classList.add('translating');
+      setTimeout(function() { document.documentElement.classList.remove('translating'); }, 1500);
+    }
   </script>
   <style>
+    html.translating body { opacity: 0; }
+    html.translated-ltr body { opacity: 1 !important; transition: opacity 0.3s ease; }
+
     :root {
       --primary: #4f46e5;
       --primary-light: #818cf8;
@@ -122,13 +131,23 @@
   <div class="row justify-content-center">
     <div class="col-12 col-sm-10 col-md-6 col-lg-5">
       <div class="login-card">
+        <div class="dropdown" style="position: absolute; top: 1.25rem; left: 1.25rem; z-index: 100;">
+          <button class="theme-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="position: relative; top: 0; left: 0; right: auto;" aria-label="Select Language">
+            <i class="bi bi-translate fs-5"></i>
+          </button>
+          <ul class="dropdown-menu shadow border-0" style="border-radius: 12px; min-width: 150px;">
+            <li><a class="dropdown-item fw-500 py-2" href="#" onclick="setLanguage('ml'); return false;">മലയാളം (Malayalam)</a></li>
+            <li><a class="dropdown-item fw-500 py-2" href="#" onclick="setLanguage('en'); return false;">English</a></li>
+          </ul>
+        </div>
         <button class="theme-toggle" id="themeToggleBtn" aria-label="Toggle Dark Mode">
           <i class="bi bi-moon-stars fs-5"></i>
         </button>
         <div class="login-header">
-          <div class="login-logo"><img src="{% static 'img/Logo.png' %}" alt="Decore Developers"></div>
-          <h2>Decore Developers</h2>
+          <div class="login-logo"><img src="{% static 'img/Logo.png' %}" alt="Decore Developers" class="notranslate"></div>
+          <h2 class="notranslate">Decore Developers</h2>
           <p>POP Work Management System</p>
+
         </div>
         <div class="login-body">
           {% for message in messages %}
@@ -209,5 +228,33 @@
     });
   }
 </script>
+
+<!-- Language Translation Script -->
+<style>
+  .skiptranslate iframe { display: none !important; }
+  body { top: 0 !important; }
+  #google_translate_element { display: none !important; }
+  .goog-te-banner-frame.skiptranslate { display: none !important; } 
+</style>
+<div id="google_translate_element"></div>
+<script type="text/javascript">
+  function googleTranslateElementInit() {
+    new google.translate.TranslateElement({pageLanguage: 'en', includedLanguages: 'en,ml', autoDisplay: false}, 'google_translate_element');
+  }
+  function setLanguage(lang) {
+    var domain = window.location.hostname;
+    document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=" + domain;
+    document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=." + domain;
+    if (lang !== 'en') {
+      document.cookie = `googtrans=/en/${lang}; path=/; domain=${domain}`;
+      document.cookie = `googtrans=/en/${lang}; path=/`; 
+      document.cookie = `googtrans=/en/${lang}; path=/; domain=.${domain}`; 
+    }
+    window.location.reload();
+  }
+</script>
+<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
 </body>
 </html>
