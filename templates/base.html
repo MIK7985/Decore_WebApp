@@ -758,6 +758,50 @@
         e.target.classList.add('was-validated');
       }
     }, true);
+
+    // iOS PWA File Downloader Fix (Intercepts all links with 'download' attribute)
+    if (window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches) {
+      document.addEventListener('click', async function(e) {
+        const link = e.target.closest('a[download]');
+        if (!link) return;
+        
+        e.preventDefault();
+        const btnContent = link.innerHTML;
+        // Keep button width stable if possible
+        link.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span><span style="font-size: 0.8rem;">Saving...</span>';
+        link.style.pointerEvents = 'none';
+        
+        try {
+          const href = link.getAttribute('href');
+          const res = await fetch(href);
+          if (!res.ok) throw new Error('Network response was not ok');
+          const blob = await res.blob();
+          
+          let filename = link.getAttribute('download') || 'document.pdf';
+          const disposition = res.headers.get('content-disposition');
+          if (disposition && disposition.indexOf('filename=') !== -1) {
+              const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
+              if (matches != null && matches[1]) filename = matches[1].replace(/['"]/g, '');
+          }
+          
+          const file = new File([blob], filename, { type: blob.type });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: filename });
+          } else {
+            // Fallback for non-shareable environment
+            const reader = new FileReader();
+            reader.onload = e => window.location.href = e.target.result;
+            reader.readAsDataURL(blob);
+          }
+        } catch(err) {
+          console.error('PWA Download Error:', err);
+          alert('Failed to download file. Please check your connection.');
+        } finally {
+          link.innerHTML = btnContent;
+          link.style.pointerEvents = 'auto';
+        }
+      });
+    }
   </script>
   
 </body>
