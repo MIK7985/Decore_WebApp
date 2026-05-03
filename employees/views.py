@@ -47,9 +47,9 @@ def employee_detail(request, pk):
     
     # Security check: Standard employees can only see their own profile
     if not request.user.can_manage:
-        if not hasattr(request.user, 'employee') or request.user.employee.id != employee.id:
+        if request.user.employee is None or request.user.employee.id != employee.id:
             messages.error(request, "Access denied. You can only view your own profile.")
-            if hasattr(request.user, 'employee') and request.user.employee:
+            if request.user.employee is not None:
                 return redirect('employee_detail', pk=request.user.employee.pk)
             return redirect('login')
     from attendance.models import Attendance
@@ -116,7 +116,7 @@ def employee_edit(request, pk):
     
     # Permission Check: Admin, Office Staff, OR the employee themselves
     is_manager = request.user.role in ['admin', 'office_staff'] or request.user.is_superuser
-    is_self = hasattr(request.user, 'employee') and request.user.employee.id == employee.id
+    is_self = request.user.employee is not None and request.user.employee.id == employee.id
     
     if not (is_manager or is_self):
         messages.error(request, "Permission Denied. You cannot edit this profile.")
@@ -200,7 +200,7 @@ def employee_update_photo(request, pk):
     employee = get_object_or_404(Employee, pk=pk)
     
     # Check permission: Must be Admin OR the employee themselves
-    if not (request.user.can_manage or (hasattr(request.user, 'employee') and request.user.employee.id == employee.id)):
+    if not (request.user.can_manage or (request.user.employee is not None and request.user.employee.id == employee.id)):
         messages.error(request, "Permission Denied. You cannot update this profile photo.")
         return redirect('dashboard')
         
@@ -215,7 +215,7 @@ def employee_update_photo(request, pk):
 def employee_remove_photo(request, pk):
     employee = get_object_or_404(Employee, pk=pk)
     
-    if not (request.user.can_manage or (hasattr(request.user, 'employee') and request.user.employee.id == employee.id)):
+    if not (request.user.can_manage or (request.user.employee is not None and request.user.employee.id == employee.id)):
         messages.error(request, "Permission Denied. You cannot update this profile photo.")
         return redirect('dashboard')
         

@@ -50,13 +50,34 @@ class EmployeeForm(forms.ModelForm):
                 'oninput': "this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);"
             }),
             'role': forms.Select(attrs={'class':'form-select'}),
-            'daily_wage': forms.NumberInput(attrs={'class':'form-control','step':'0.01','min':'0'}),
-            'address': forms.Textarea(attrs={'class':'form-control','rows':3}),
+            'daily_wage': forms.NumberInput(attrs={
+                'class':'form-control',
+                'step':'1',
+                'min':'0', 
+                'max':'3000',
+                'oninput': "if(this.value > 3000) this.value = 3000; if(this.value < 0) this.value = 0;"
+            }),
+            'address': forms.Textarea(attrs={'class':'form-control','rows':3, 'maxlength':'500', 'placeholder':'Max 500 characters'}),
             'joining_date': forms.DateInput(attrs={'class':'form-control','type':'date'}),
             'status': forms.Select(attrs={'class':'form-select'}),
-            'emergency_contact': forms.TextInput(attrs={'class':'form-control'}),
-            'notes': forms.Textarea(attrs={'class':'form-control','rows':2}),
+            'emergency_contact': forms.TextInput(attrs={
+                'class':'form-control',
+                'placeholder':'10-digit emergency number', 
+                'pattern': '[0-9]{10}', 
+                'title': 'Phone number must be exactly 10 digits', 
+                'maxlength': '10', 
+                'minlength': '10', 
+                'type': 'tel', 
+                'oninput': "this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);"
+            }),
+            'notes': forms.Textarea(attrs={'class':'form-control','rows':2, 'maxlength':'500', 'placeholder':'Max 500 characters'}),
         }
+
+    def clean_daily_wage(self):
+        wage = self.cleaned_data.get('daily_wage')
+        if wage and wage > 3000:
+            raise forms.ValidationError("Daily wage cannot exceed ₹3,000.")
+        return wage
 
     def clean_phone(self):
         phone = self.cleaned_data.get('phone')
@@ -71,3 +92,12 @@ class EmployeeForm(forms.ModelForm):
             if qs.exists():
                 raise forms.ValidationError("An employee with this phone number already exists.")
         return phone
+
+    def clean_emergency_contact(self):
+        contact = self.cleaned_data.get('emergency_contact')
+        if contact:
+            import re
+            if not re.fullmatch(r'\d{10}', contact):
+                raise forms.ValidationError("Emergency contact must be exactly 10 digits.")
+        return contact
+

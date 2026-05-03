@@ -9,15 +9,15 @@
   {% endif %}
 </div>
 <div class="card mb-3"><div class="card-body py-2">
-  <form method="get" class="row g-2 align-items-end">
-    <div class="col-12 col-md-5"><input type="text" name="q" class="form-control form-control-sm" placeholder="Search site name or location…" value="{{ q }}"></div>
+  <form id="filterForm" method="get" class="row g-2 align-items-end">
+    <div class="col-12 col-md-5"><input type="text" name="q" class="form-control form-control-sm" placeholder="Search site name or location…" value="{{ q }}" oninput="autoSubmit()"></div>
     <div class="col-6 col-md-2">
-      <select name="status" class="form-select form-select-sm">
+      <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
         <option value="">All Status</option>
         {% for val,label in status_choices %}<option value="{{ val }}" {% if status == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
       </select>
     </div>
-    <div class="col-auto"><button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Search</button></div>
+    <noscript><div class="col-auto"><button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>Search</button></div></noscript>
     <div class="col-auto"><a href="{% url 'site_list' %}" class="btn btn-light btn-sm">Reset</a></div>
   </form>
 </div></div>
@@ -71,4 +71,29 @@
   {% if sites.has_next %}<li class="page-item"><a class="page-link" href="?page={{ sites.next_page_number }}&q={{ q }}&status={{ status }}">›</a></li>{% endif %}
 </ul></nav>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let timeout = null;
+function autoSubmit() {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {
+        document.getElementById('filterForm').submit();
+    }, 500);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('q')) {
+        const queryInput = document.querySelector('input[name="q"]');
+        if (queryInput) {
+            queryInput.focus();
+            const val = queryInput.value;
+            queryInput.value = '';
+            queryInput.value = val;
+        }
+    }
+});
+</script>
 {% endblock %}

@@ -33,7 +33,7 @@ def site_detail(request, pk):
     
     # Security check
     if not request.user.can_manage and request.user.role != 'driver':
-        if hasattr(request.user, 'employee') and request.user.employee:
+        if request.user.employee is not None:
             is_assigned = EmployeeAssignment.objects.filter(site=site, employee=request.user.employee, is_active=True).exists()
             if not is_assigned:
                 messages.error(request, "Access denied. You are not assigned to this site.")
@@ -45,7 +45,7 @@ def site_detail(request, pk):
     labor_cost = site.get_labor_cost(today.month, today.year)
     
     is_assigned_main_worker = False
-    if hasattr(request.user, 'employee') and request.user.employee and request.user.employee.role == 'main_worker':
+    if request.user.employee is not None and request.user.employee.role == 'main_worker':
         is_assigned_main_worker = assignments.filter(employee=request.user.employee, is_active=True).exists()
         
     from inventory.models import DeliveryLogItem
@@ -157,7 +157,7 @@ def remove_assignment(request, pk):
 
 @login_required
 def worker_sites(request):
-    if not hasattr(request.user, 'employee') or not request.user.employee:
+    if not (request.user.employee is not None) or not request.user.employee:
         return redirect('dashboard')
         
     assignments = EmployeeAssignment.objects.filter(employee=request.user.employee, is_active=True).select_related('site')
@@ -187,7 +187,7 @@ def site_area_add(request, site_pk):
     site = get_object_or_404(WorkSite, pk=site_pk)
     
     can_edit = request.user.can_manage
-    if not can_edit and hasattr(request.user, 'employee') and request.user.employee and request.user.employee.role == 'main_worker':
+    if not can_edit and request.user.employee is not None and request.user.employee.role == 'main_worker':
         can_edit = EmployeeAssignment.objects.filter(site=site, employee=request.user.employee, is_active=True).exists()
     if not can_edit:
         messages.error(request, 'Permission denied.')
@@ -202,12 +202,15 @@ def site_area_add(request, site_pk):
 
 @login_required
 def site_area_update(request, area_pk):
-    from .models import WorkArea, WorkAreaImage
+    from .models import WorkArea, WorkAreaImage, EmployeeAssignment
     area = get_object_or_404(WorkArea, pk=area_pk)
     
     can_edit = request.user.can_manage
-    if not can_edit and hasattr(request.user, 'employee') and request.user.employee and request.user.employee.role == 'main_worker':
-        can_edit = EmployeeAssignment.objects.filter(site=area.site, employee=request.user.employee, is_active=True).exists()
+    is_main_worker = False
+    if not can_edit and request.user.employee is not None and request.user.employee.role == 'main_worker':
+        is_main_worker = EmployeeAssignment.objects.filter(site=area.site, employee=request.user.employee, is_active=True).exists()
+        can_edit = is_main_worker
+        
     if not can_edit:
         messages.error(request, 'Permission denied.')
         return redirect('dashboard')
@@ -217,13 +220,58 @@ def site_area_update(request, area_pk):
         area.progress_percentage = request.POST.get('progress_percentage', area.progress_percentage)
         area.save()
         
-        # Check for image upload
-        images = request.FILES.getlist('images')
-        for image in images:
-            WorkAreaImage.objects.create(work_area=area, image=image)
+        # Check for image upload - strictly admin only
+        if request.user.can_manage:
+            images = request.FILES.getlist('images')
+            for image in images:
+                WorkAreaImage.objects.create(work_area=area, image=image)
             
         messages.success(request, f'Area "{area.name}" updated.')
     return redirect('site_detail', pk=area.site.pk)
+
+@login_required
+def delete_area_image(request, image_pk):
+    from .models import WorkAreaImage
+    image = get_object_or_404(WorkAreaImage, pk=image_pk)
+    area = image.work_area
+    site = area.site
+    
+    # Only admins can delete photos
+    can_edit = request.user.can_manage
+    
+    if not can_edit:
+        messages.error(request, 'Permission denied. Only admins can delete photos.')
+        return redirect('site_detail', pk=site.pk)
+        
+    if request.method == 'POST':
+        image.delete()
+        messages.success(request, 'Image deleted successfully.')
+        
+    return redirect('site_detail', pk=site.pk)
+
+@admin_or_office_staff_required
+def site_add_payment(request, site_pk):
+    from .forms import SitePaymentForm
+    site = get_object_or_404(WorkSite, pk=site_pk)
+    form = SitePaymentForm(request.POST or None)
+    if form.is_valid():
+        payment = form.save(commit=False)
+        payment.site = site
+        payment.save()
+        messages.success(request, f'Payment of ₹{payment.amount} recorded successfully.')
+        return redirect('site_detail', pk=site_pk)
+    return render(request, 'sites_mgmt/site_payment_form.html', {'form': form, 'site': site})
+
+@admin_or_office_staff_required
+def site_delete_payment(request, payment_pk):
+    from .models import SitePayment
+    payment = get_object_or_404(SitePayment, pk=payment_pk)
+    site_pk = payment.site.pk
+    if request.method == 'POST':
+        payment.delete()
+        messages.success(request, 'Payment record deleted.')
+        return redirect('site_detail', pk=site_pk)
+    return redirect('site_detail', pk=site_pk)
 
 @login_required
 def download_site_materials_pdf(request, pk):

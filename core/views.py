@@ -15,7 +15,7 @@ def login_view(request):
     if request.user.is_authenticated:
         if getattr(request.user, 'role', '') == 'client':
             return redirect('client_dashboard')
-        if not request.user.can_manage and hasattr(request.user, 'employee') and request.user.employee:
+        if not request.user.can_manage and request.user.employee is not None:
             return redirect('employee_detail', pk=request.user.employee.pk)
         return redirect('dashboard')
     

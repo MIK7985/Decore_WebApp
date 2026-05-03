@@ -17,7 +17,7 @@ class PaymentForm(forms.ModelForm):
             'payment_date': forms.DateInput(attrs={'class':'form-control','type':'date'}),
             'method': forms.Select(attrs={'class':'form-select'}),
             'reference_number': forms.TextInput(attrs={'class':'form-control'}),
-            'notes': forms.Textarea(attrs={'class':'form-control','rows':2}),
+            'notes': forms.Textarea(attrs={'class':'form-control','rows':2, 'maxlength': '500', 'placeholder': 'Max 500 characters'}),
         }
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

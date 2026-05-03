@@ -13,17 +13,22 @@
           {% csrf_token %}
           <div class="mb-3">
             <label class="form-label fw-500">Amount Required (₹)</label>
-            <input type="number" name="amount" class="form-control" placeholder="Max ₹20,000" min="1" max="20000" step="1" required>
-            <div class="form-text small">Maximum allowed: ₹20,000</div>
+            <input type="number" name="amount" class="form-control" placeholder="Max ₹{{ max_advance|floatformat:0 }}" min="1" max="{{ max_advance|floatformat:0 }}" step="1" required {% if has_pending %}disabled{% endif %}>
+            <div class="form-text small text-muted">Your dynamic maximum limit is: <span class="fw-600 text-dark">₹{{ max_advance|floatformat:0 }}</span> (based on your daily wage).</div>
           </div>
           <div class="mb-4">
             <label class="form-label fw-500">Reason</label>
-            <textarea name="reason" id="reasonArea" class="form-control" rows="3" placeholder="Briefly explain why you need an advance" maxlength="200" required></textarea>
+            <textarea name="reason" id="reasonArea" class="form-control" rows="3" placeholder="Briefly explain why you need an advance" maxlength="200" required {% if has_pending %}disabled{% endif %}></textarea>
             <div class="d-flex justify-content-end mt-1">
               <small class="text-muted" id="charCount">0/200</small>
             </div>
           </div>
+          {% if has_pending %}
+          <div class="alert alert-warning py-2 small fw-600 mb-3"><i class="bi bi-clock-history me-2"></i>You have a pending request waiting for approval.</div>
+          <button type="button" class="btn btn-secondary w-100 shadow-sm" disabled><i class="bi bi-send me-1"></i> Submit Request</button>
+          {% else %}
           <button type="submit" class="btn btn-primary w-100 shadow-sm"><i class="bi bi-send me-1"></i> Submit Request</button>
+          {% endif %}
         </form>
       </div>
     </div>

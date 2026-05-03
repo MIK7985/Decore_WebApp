@@ -18,7 +18,7 @@ def attendance_list(request):
     
     # Permission: Employees can only view their own history. 
     if not request.user.can_manage:
-        if hasattr(request.user, 'employee') and request.user.employee:
+        if request.user.employee is not None:
             records = records.filter(employee=request.user.employee)
         else:
             records = records.none()
@@ -69,7 +69,7 @@ def download_attendance_pdf(request):
     records = Attendance.objects.select_related('employee', 'site').all()
     
     if not request.user.can_manage:
-        if hasattr(request.user, 'employee') and request.user.employee:
+        if request.user.employee is not None:
             records = records.filter(employee=request.user.employee)
         else:
             records = records.none()
@@ -180,7 +180,7 @@ def mark_attendance(request):
 
     # Employee Role constraint: Only mark for self
     if not request.user.can_manage:
-        if not hasattr(request.user, 'employee') or not request.user.employee:
+        if not (request.user.employee is not None) or not request.user.employee:
             messages.error(request, "No employee profile linked to your account.")
             return redirect('dashboard')
         if request.user.employee.status == 'inactive':
@@ -240,7 +240,7 @@ def mark_attendance(request):
         return redirect(f"{reverse('attendance_list')}?date={post_date}")
 
     sites = WorkSite.objects.filter(status='active')
-    if not request.user.can_manage and hasattr(request.user, 'employee'):
+    if not request.user.can_manage and (request.user.employee is not None):
         assigned_site_ids = EmployeeAssignment.objects.filter(employee=request.user.employee, is_active=True).values_list('site_id', flat=True)
         sites = sites.filter(id__in=assigned_site_ids)
 
@@ -302,7 +302,7 @@ def employee_attendance(request, employee_pk):
     employee = get_object_or_404(Employee, pk=employee_pk)
     
     if not request.user.can_manage:
-        if not hasattr(request.user, 'employee') or request.user.employee.id != employee.id:
+        if request.user.employee is None or request.user.employee.id != employee.id:
             messages.error(request, "Permission Denied. You can only view your own attendance history.")
             return redirect('dashboard')
             

@@ -45,16 +45,10 @@ class Employee(models.Model):
         from attendance.models import Attendance
         from decimal import Decimal
         records = Attendance.objects.filter(employee=self, date__month=month, date__year=year)
-        days = sum(
-            1 if r.status == 'present' else 0.5 if r.status == 'half_day' else 0
-            for r in records
-        )
+        days = sum(r.day_value for r in records)
         return Decimal(str(days)) * self.daily_wage
 
     def get_total_present_days(self, month, year):
         from attendance.models import Attendance
         records = Attendance.objects.filter(employee=self, date__month=month, date__year=year)
-        return sum(
-            1 if r.status == 'present' else 0.5 if r.status == 'half_day' else 0
-            for r in records
-        )
+        return sum(r.day_value for r in records)

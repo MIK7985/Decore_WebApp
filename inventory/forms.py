@@ -25,7 +25,7 @@ class ItemForm(forms.ModelForm):
             'category': forms.Select(attrs={'class': 'form-select'}),
             'unit': forms.Select(attrs={'class': 'form-select'}),
             'unit_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'maxlength': '500', 'placeholder': 'Max 500 characters'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -55,7 +55,7 @@ class MaterialRequestForm(forms.ModelForm):
             'item': forms.Select(attrs={'class': 'form-select', 'id': 'itemSelect'}),
             'custom_item_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Type item name if not in list', 'id': 'customItemInput'}),
             'quantity': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Amount required', 'step': 'any'}),
-            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Optional: e.g. Urgent, needed tomorrow'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'maxlength': '500', 'placeholder': 'Optional: e.g. Urgent, needed tomorrow (Max 500 chars)'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -90,7 +90,7 @@ class DeliveryLogForm(forms.ModelForm):
             'source_storage': forms.Select(attrs={'class': 'form-select'}),
             'site': forms.Select(attrs={'class': 'form-select'}),
             'date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Optional: e.g. Left with site manager'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'maxlength': '500', 'placeholder': 'Optional: e.g. Left with site manager (Max 500 chars)'}),
         }
         
 class DeliveryLogItemForm(forms.ModelForm):

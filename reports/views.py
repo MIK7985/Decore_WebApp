@@ -114,9 +114,7 @@ def site_labor_report(request):
             worker_site_records = site_attendance.filter(employee_id=worker_id)
             effective_days = 0
             for r in worker_site_records:
-                if r.status == 'present': effective_days += 1
-                elif r.status == 'half_day': effective_days += 0.5
-                elif r.status == '1_5_days': effective_days += 1.5
+                effective_days += float(r.day_value)
             
             site_labor_cost += float(effective_days) * float(emp.daily_wage)
         

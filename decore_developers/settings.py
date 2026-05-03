@@ -15,6 +15,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Security settings for production
 if not DEBUG:
+    # Set these to True ONLY when you have an active HTTPS/SSL certificate!
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_HTTPONLY = True
@@ -22,10 +23,14 @@ if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
-    # HSTS settings (Uncomment after verifying HTTPS is working)
-    # SECURE_HSTS_SECONDS = 31536000
-    # SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    # SECURE_HSTS_PRELOAD = True
+    
+    # CRITICAL: This tells Django that Nginx is handling the HTTPS!
+    # Without this, Django thinks it's HTTP and drops the secure cookies.
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Ensure sessions last a long time (30 days) and don't expire on close
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 30 
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
 INSTALLED_APPS = [
     'django.contrib.admin',

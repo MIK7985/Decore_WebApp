@@ -27,6 +27,18 @@ class WorkSite(models.Model):
     def is_completed(self):
         return self.status == 'completed'
         
+    @property
+    def amount_paid(self):
+        from django.db.models import Sum
+        total = self.client_payments.aggregate(total=Sum('amount'))['total']
+        return total or 0
+        
+    @property
+    def balance_due(self):
+        est = self.estimated_cost or 0
+        paid = self.amount_paid or 0
+        return est - paid
+        
     def get_material_cost(self):
         return sum(log.get_total_cost() for log in self.deliveries_received.all())
 
@@ -111,3 +123,24 @@ class WorkAreaImage(models.Model):
 
     def __str__(self):
         return f"Image for {self.work_area.name}"
+
+class SitePayment(models.Model):
+    PAYMENT_METHODS = [
+        ('bank_transfer', 'Bank Transfer'),
+        ('cash', 'Cash'),
+        ('upi', 'UPI'),
+        ('cheque', 'Cheque')
+    ]
+    site = models.ForeignKey(WorkSite, on_delete=models.CASCADE, related_name='client_payments')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    payment_date = models.DateField(default=timezone.now)
+    method = models.CharField(max_length=20, choices=PAYMENT_METHODS, default='bank_transfer')
+    reference_number = models.CharField(max_length=100, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-payment_date', '-created_at']
+        
+    def __str__(self):
+        return f"₹{self.amount} for {self.site.name} on {self.payment_date}"

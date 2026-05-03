@@ -2,6 +2,13 @@
 {% block title %}{{ storage.name }} Stock{% endblock %}
 {% block page_title %}Manage Storage Stock{% endblock %}
 
+{% block back_url %}
+<button class="btn btn-sm btn-light d-lg-none" id="sidebarToggle"><i class="bi bi-list fs-5"></i></button>
+<a href="{% url 'storage_list' %}" class="btn btn-sm btn-light border shadow-sm">
+  <i class="bi bi-arrow-left fs-5"></i>
+</a>
+{% endblock %}
+
 {% block content %}
 <div class="row g-3 mb-4">
   <div class="col-12 col-md-4">
@@ -10,9 +17,6 @@
         <h5 class="fw-700 text-primary mb-2"><i class="bi bi-box-seam me-2"></i>{{ storage.name }}</h5>
         <div class="text-muted small mb-2"><i class="bi bi-geo-alt me-1"></i>{{ storage.location }}</div>
         <div class="text-muted small"><i class="bi bi-person me-1"></i>Manager: {{ storage.manager.name|default:"Unassigned" }}</div>
-      </div>
-      <div class="card-footer bg-white border-top-0 pb-3">
-        <a href="{% url 'storage_list' %}" class="btn btn-light btn-sm w-100">Back to Storages</a>
       </div>
     </div>
   </div>

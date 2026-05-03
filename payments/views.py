@@ -126,7 +126,7 @@ def employee_payment_history(request, employee_pk):
     employee = get_object_or_404(Employee, pk=employee_pk)
     
     # Check permissions: Admin/Accountant or the Employee themselves
-    if not request.user.can_manage and (not hasattr(request.user, 'employee') or request.user.employee.pk != employee.pk):
+    if not request.user.can_manage and (request.user.employee is None or request.user.employee.pk != employee.pk):
         messages.error(request, 'Permission denied.')
         return redirect('dashboard')
         

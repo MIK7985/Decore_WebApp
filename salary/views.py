@@ -18,9 +18,22 @@ def salary_list(request):
     
     today = timezone.now().date()
     
+    # Calculate the current week's Saturday
+    days_ahead = 5 - today.weekday()
+    if days_ahead < 0:
+        days_ahead += 7
+    current_saturday = today + datetime.timedelta(days=days_ahead)
+    
     # Get filters
-    year = int(request.GET.get('year', today.year))
-    month = int(request.GET.get('month', today.month))
+    year_str = request.GET.get('year')
+    month_str = request.GET.get('month')
+    
+    if year_str and month_str:
+        year = int(year_str)
+        month = int(month_str)
+    else:
+        year = current_saturday.year
+        month = current_saturday.month
     
     # Generate weeks for this month
     cal = calendar.monthcalendar(year, month)
@@ -39,22 +52,25 @@ def salary_list(request):
             'label': f"Week {i + 1} ({start.strftime('%b %d')} - {sat.strftime('%b %d')})"
         })
         
-    # Default to week 1 if not provided, or to the current week if current month
+    # Default to current week if viewing current month, else week 1
     default_week = 1
-    if year == today.year and month == today.month and weeks:
-        found = False
+    if year == current_saturday.year and month == current_saturday.month and weeks:
         for w in weeks:
             if w['start_date'] <= today <= w['end_date']:
                 default_week = w['week_num']
-                found = True
                 break
-        if not found:
-            if today > weeks[-1]['end_date']:
-                default_week = weeks[-1]['week_num']
-            elif today < weeks[0]['start_date']:
-                default_week = 1
+        else:
+            # If today somehow doesn't match, check if current_saturday is in this list
+            for w in weeks:
+                if w['end_date'] == current_saturday:
+                    default_week = w['week_num']
+                    break
                 
-    week_num = int(request.GET.get('week', default_week))
+    week_str = request.GET.get('week')
+    if week_str:
+        week_num = int(week_str)
+    else:
+        week_num = default_week
     
     # Ensure week_num is valid
     if week_num < 1 or week_num > len(weeks):
@@ -68,7 +84,7 @@ def salary_list(request):
     employees = Employee.objects.filter(status='active')
     for emp in employees:
         att_records = Attendance.objects.filter(employee=emp, date__gte=start_date, date__lte=end_date)
-        working_days = Decimal(str(sum(1 if r.status == 'present' else 0.5 if r.status == 'half_day' else 0 for r in att_records)))
+        working_days = Decimal(str(sum(r.day_value for r in att_records)))
         
         unapplied_advances = AdvanceRequest.objects.filter(employee=emp, status='approved', salary_summary__isnull=True)
         advance_total = sum(a.get_final_amount for a in unapplied_advances)
@@ -155,7 +171,7 @@ def download_salary_report(request):
     writer = csv.writer(response)
     writer.writerow([f'Salary Report for Week: {start_date.strftime("%d %b %Y")} to {end_date.strftime("%d %b %Y")}'])
     writer.writerow([])
-    writer.writerow(['Employee Name', 'Daily Wage', 'Working Days', 'Total Amount', 'Paid Amount', 'Pending Amount'])
+    writer.writerow(['Employee Name', 'Daily Wage', 'Working Days', 'Gross Amount', 'Advance Deducted', 'Net Payable', 'Paid Amount', 'Pending Amount'])
     
     summaries = SalarySummary.objects.filter(end_date=end_date).select_related('employee')
     for s in summaries:
@@ -163,6 +179,8 @@ def download_salary_report(request):
             s.employee.name,
             f"{s.daily_wage:.2f}",
             s.working_days,
+            f"{s.gross_salary:.2f}",
+            f"{s.deductions:.2f}",
             f"{s.net_payable:.2f}",
             f"{s.total_paid:.2f}",
             f"{s.pending_amount:.2f}"
@@ -175,7 +193,7 @@ def download_salary_report(request):
 def download_salary_pdf(request):
     from django.http import HttpResponse
     from reportlab.lib import colors
-    from reportlab.lib.pagesizes import letter, portrait
+    from reportlab.lib.pagesizes import A4
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     import calendar
@@ -195,7 +213,8 @@ def download_salary_pdf(request):
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="salary_report_week_{end_date_str}.pdf"'
     
-    doc = SimpleDocTemplate(response, pagesize=portrait(letter))
+    # A4 dimensions are 595.27 x 841.89 points
+    doc = SimpleDocTemplate(response, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
     elements = []
     
     styles = getSampleStyleSheet()
@@ -213,10 +232,10 @@ def download_salary_pdf(request):
     if os.path.exists(logo_path):
         img = Image(logo_path, width=70, height=70, mask='auto')
         header_data.append([img, title_p])
-        header_table = Table(header_data, colWidths=[80, 420])
+        header_table = Table(header_data, colWidths=[80, 450])
     else:
         header_data.append([title_p])
-        header_table = Table(header_data, colWidths=[500])
+        header_table = Table(header_data, colWidths=[530])
         
     header_table.setStyle(TableStyle([
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
@@ -227,31 +246,40 @@ def download_salary_pdf(request):
     elements.append(header_table)
     elements.append(Spacer(1, 15))
     
-    data = [['Employee Name', 'Wage', 'Days', 'Total', 'Advance', 'Paid', 'Pending']]
+    data = [['Employee Name', 'Wage', 'Days', 'Gross', 'Advance', 'Net', 'Pending']]
     
     summaries = SalarySummary.objects.filter(end_date=end_date).select_related('employee')
-    total_payable = 0
+    total_gross = 0
     total_advance = 0
-    total_paid = 0
+    total_net = 0
     total_pending = 0
     for s in summaries:
         data.append([
             s.employee.name,
             f"{s.daily_wage:.0f}",
             str(s.working_days),
-            f"{s.net_payable + s.deductions:.0f}",
+            f"{s.gross_salary:.0f}",
             f"{s.deductions:.0f}",
-            f"{s.total_paid:.0f}",
+            f"{s.net_payable:.0f}",
             f"{s.pending_amount:.0f}",
         ])
-        total_payable += (s.net_payable + s.deductions)
+        total_gross += s.gross_salary
         total_advance += s.deductions
-        total_paid += s.total_paid
+        total_net += s.net_payable
         total_pending += s.pending_amount
         
-    data.append(['TOTAL', '', '', f"Rs.{total_payable:.0f}", f"Rs.{total_advance:.0f}", f"Rs.{total_paid:.0f}", f"Rs.{total_pending:.0f}"])
-        
-    table = Table(data, colWidths=[120, 50, 40, 60, 65, 65, 70])
+    data.append([
+        'TOTAL', 
+        '', 
+        '', 
+        f"{total_gross:.0f}", 
+        f"{total_advance:.0f}", 
+        f"{total_net:.0f}", 
+        f"{total_pending:.0f}"
+    ])
+    
+    # Total width of A4 is 595. Margins are 30+30=60. Available width = 535.
+    table = Table(data, colWidths=[150, 55, 50, 70, 70, 70, 70])
     table.setStyle(TableStyle([
         # Header Row
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#0f172a")),
@@ -335,7 +363,7 @@ def finalize_salary(request, pk):
 def request_advance(request):
     """Employee view to request an advance"""
     # Ensure only active employees can request
-    if not hasattr(request.user, 'employee') or not request.user.employee:
+    if not (request.user.employee is not None) or not request.user.employee:
         messages.error(request, "Only registered employees can request advances.")
         return redirect('dashboard')
     
@@ -343,14 +371,30 @@ def request_advance(request):
         messages.error(request, "Your account is deactivated. Contact your admin.")
         return redirect('dashboard')
         
+    # Show history of requests for this employee
+    my_requests = AdvanceRequest.objects.filter(employee=request.user.employee)
+    
+    # Check if they already have a pending request
+    has_pending = my_requests.filter(status='pending').exists()
+    
+    # Calculate dynamic max advance (e.g., 15 days of wage or 20,000 max)
+    daily_wage = request.user.employee.daily_wage
+    max_advance = min(Decimal('20000'), daily_wage * 15) if daily_wage else Decimal('5000')
+    
     if request.method == 'POST':
+        if has_pending:
+            messages.error(request, "You already have a pending advance request. Please wait for it to be reviewed.")
+            return redirect('request_advance')
+            
         amount_str = request.POST.get('amount')
         reason = request.POST.get('reason', '')
         
         try:
             amount = Decimal(amount_str)
-            if amount > 20000:
-                messages.error(request, "Advance amount cannot exceed ₹20,000.")
+            if amount > max_advance:
+                messages.error(request, f"Advance amount cannot exceed your limit of ₹{max_advance:,.0f}.")
+            elif amount <= 0:
+                messages.error(request, "Please enter a valid amount.")
             elif len(reason) > 200:
                 messages.error(request, "Reason must be 200 characters or less.")
             else:
@@ -362,11 +406,13 @@ def request_advance(request):
                 messages.success(request, 'Advance request submitted successfully.')
                 return redirect('request_advance')
         except Exception as e:
-            messages.error(request, f"Error submitting request: {e}")
+            messages.error(request, "Invalid amount entered.")
             
-    # Show history of requests for this employee
-    my_requests = AdvanceRequest.objects.filter(employee=request.user.employee)
-    return render(request, 'salary/request_advance.html', {'my_requests': my_requests})
+    return render(request, 'salary/request_advance.html', {
+        'my_requests': my_requests, 
+        'has_pending': has_pending,
+        'max_advance': max_advance
+    })
 
 @login_required
 @admin_or_office_staff_required
@@ -405,4 +451,17 @@ def update_advance(request, pk):
             messages.success(request, f'Advance request {status}.')
             
         return redirect('advance_list')
-    return render(request, 'salary/advance_edit.html', {'adv': adv})
+        
+    # Calculate Insights for Admin
+    emp = adv.employee
+    unapplied_advances = AdvanceRequest.objects.filter(employee=emp, status='approved', salary_summary__isnull=True)
+    unapplied_total = sum(a.get_final_amount for a in unapplied_advances)
+    
+    # Calculate unfinalized/draft salary accrued
+    unpaid_salary = SalarySummary.objects.filter(employee=emp, status='draft').aggregate(t=Sum('net_payable'))['t'] or Decimal('0')
+    
+    return render(request, 'salary/advance_edit.html', {
+        'adv': adv,
+        'unapplied_total': unapplied_total,
+        'unpaid_salary': unpaid_salary
+    })

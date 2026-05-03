@@ -1,6 +1,11 @@
 {% extends 'base.html' %}
 {% block title %}Review Advance Request{% endblock %}
 {% block page_title %}Advance Request{% endblock %}
+{% block back_url %}
+<a href="{% url 'advance_list' %}" class="btn btn-sm btn-light border shadow-sm">
+  <i class="bi bi-arrow-left fs-5"></i>
+</a>
+{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-12 col-md-8 col-lg-6">
@@ -19,38 +24,57 @@
           </div>
         </div>
 
+        <div class="row g-2 mb-4">
+          <div class="col-12 col-md-4">
+            <div class="bg-light p-3 rounded-3 h-100">
+              <small class="text-muted text-uppercase fw-600 d-block mb-1" style="font-size: 0.70rem;">Daily Wage</small>
+              <div class="fw-800 text-dark">₹{{ adv.employee.daily_wage|floatformat:0|default:"0" }}</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-4">
+            <div class="bg-light p-3 rounded-3 h-100">
+              <small class="text-muted text-uppercase fw-600 d-block mb-1" style="font-size: 0.70rem;">Pending Advances</small>
+              <div class="fw-800 text-warning">₹{{ unapplied_total|floatformat:0|default:"0" }}</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-4">
+            <div class="bg-light p-3 rounded-3 h-100">
+              <small class="text-muted text-uppercase fw-600 d-block mb-1" style="font-size: 0.70rem;">Accrued Unpaid Wage</small>
+              <div class="fw-800 text-success">₹{{ unpaid_salary|floatformat:0|default:"0" }}</div>
+            </div>
+          </div>
+        </div>
+
         <div class="row mb-4">
           <div class="col-6">
             <small class="text-muted text-uppercase fw-600 d-block mb-1" style="font-size: 0.75rem;">Requested Amount</small>
             <div class="fs-4 fw-800 text-danger">₹{{ adv.amount|floatformat:0 }}</div>
           </div>
-          <div class="col-6">
-            <small class="text-muted text-uppercase fw-600 d-block mb-1" style="font-size: 0.75rem;">Request Date</small>
+          <div class="col-6 text-end">
+            <small class="text-muted text-uppercase fw-600 d-block mb-1" style="font-size: 0.75rem;">Date</small>
             <div class="fw-600">{{ adv.request_date|date:"M d, Y" }}</div>
           </div>
         </div>
 
         <div class="mb-4">
           <small class="text-muted text-uppercase fw-600 d-block mb-1" style="font-size: 0.75rem;">Reason</small>
-          <div class="p-3 bg-light rounded" style="font-size: 0.95rem;">
-            {{ adv.reason|linebreaks }}
-          </div>
+          <div class="bg-light p-3 rounded-3 text-dark">{{ adv.reason }}</div>
         </div>
 
         {% if adv.status == 'pending' %}
-        <form method="post">
+        <form method="post" class="mt-4 border-top pt-4">
           {% csrf_token %}
           <div class="mb-3">
-            <label class="form-label fw-600 text-uppercase small text-muted">Approved Amount</label>
+            <label class="form-label fw-600 small text-muted">Approved Amount (Optional)</label>
             <div class="input-group">
-              <span class="input-group-text bg-light text-muted fw-600">₹</span>
-              <input type="number" name="approved_amount" class="form-control fw-700 fs-5 text-success" value="{{ adv.amount|floatformat:0 }}" max="{{ adv.amount }}" step="0.01">
+                <span class="input-group-text bg-white">₹</span>
+                <input type="number" name="approved_amount" class="form-control" step="1" min="0" value="{{ adv.amount|floatformat:0 }}" placeholder="Enter amount to approve">
             </div>
-            <small class="text-muted d-block mt-1">You can approve a partial amount. It defaults to the full requested amount.</small>
+            <div class="form-text small">Leave as requested amount if approving in full.</div>
           </div>
           <div class="mb-4">
-            <label class="form-label fw-600 text-uppercase small text-muted">Admin Notes (Optional)</label>
-            <textarea name="admin_notes" class="form-control" rows="2" placeholder="Add any notes regarding this decision..."></textarea>
+            <label class="form-label fw-600 small text-muted">Admin Notes (Optional)</label>
+            <textarea name="admin_notes" class="form-control" rows="2" placeholder="e.g. Approved partial amount..."></textarea>
           </div>
           <div class="d-flex gap-2">
             <button type="submit" name="status" value="approved" class="btn btn-success flex-grow-1 shadow-sm"><i class="bi bi-check-circle me-1"></i>Approve & Pay</button>
@@ -70,10 +94,6 @@
           </div>
         </div>
         {% endif %}
-
-        <div class="mt-4 pt-3 border-top text-center">
-          <a href="{% url 'advance_list' %}" class="btn btn-sm btn-light fw-600 px-4">Back to Requests</a>
-        </div>
       </div>
     </div>
   </div>

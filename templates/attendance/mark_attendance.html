@@ -1,6 +1,11 @@
 {% extends 'base.html' %}
 {% block title %}Mark Attendance{% endblock %}
 {% block page_title %}Mark Attendance{% endblock %}
+{% block back_url %}
+<a href="{% url 'attendance_list' %}" class="btn btn-sm btn-light border shadow-sm">
+  <i class="bi bi-arrow-left fs-5"></i>
+</a>
+{% endblock %}
 {% block content %}
 {% if user.can_manage %}
 <div class="card mb-3"><div class="card-body py-2">
@@ -24,7 +29,9 @@
     <span class="fw-600"><i class="bi bi-calendar-check text-primary me-2"></i>
       Mark Attendance for {{ date }}{% if site %} – {{ site.name }}{% endif %}
     </span>
-    <span class="badge bg-light text-dark border">{{ employees|length }} employees</span>
+    {% if already_marked %}
+    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Saved</span>
+    {% endif %}
   </div>
   <form method="post">
     {% csrf_token %}
