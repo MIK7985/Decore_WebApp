@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block title %}My Finances{% endblock %}
+{% block page_title %}Financial Overview{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+  <!-- Summary Cards -->
+  <div class="col-12 col-md-4">
+    <div class="card bg-white border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h6 class="text-muted fw-600 mb-0">Total Budget</h6>
+          <div class="bg-primary bg-opacity-10 text-primary rounded p-2 d-flex">
+            <i class="bi bi-wallet2 fs-5"></i>
+          </div>
+        </div>
+        <h3 class="fw-800 text-dark mb-0">₹{{ total_estimated|floatformat:0 }}</h3>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-12 col-md-4">
+    <div class="card bg-white border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h6 class="text-muted fw-600 mb-0">Total Paid</h6>
+          <div class="bg-success bg-opacity-10 text-success rounded p-2 d-flex">
+            <i class="bi bi-check-circle fs-5"></i>
+          </div>
+        </div>
+        <h3 class="fw-800 text-success mb-0">₹{{ total_paid|floatformat:0 }}</h3>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-12 col-md-4">
+    <div class="card bg-white border-0 shadow-sm h-100" style="border-left: 4px solid var(--danger) !important;">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h6 class="text-muted fw-600 mb-0">Total Balance Due</h6>
+          <div class="bg-danger bg-opacity-10 text-danger rounded p-2 d-flex">
+            <i class="bi bi-exclamation-circle fs-5"></i>
+          </div>
+        </div>
+        <h3 class="fw-800 text-danger mb-0">₹{{ total_balance|floatformat:0 }}</h3>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h4 class="fw-700 mb-3 mt-5"><i class="bi bi-receipt text-primary me-2"></i>Master Payment Ledger</h4>
+<div class="card border-0 shadow-sm mb-5">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-4">Date</th>
+            <th>Project</th>
+            <th>Amount Paid</th>
+            <th>Method</th>
+            <th>Notes</th>
+            <th class="text-end pe-4">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for payment in payments %}
+          <tr>
+            <td class="ps-4 fw-500 text-dark">{{ payment.payment_date|date:"M d, Y" }}</td>
+            <td class="fw-600 text-primary">{{ payment.site.name }}</td>
+            <td class="fw-800 text-success">₹{{ payment.amount|floatformat:0 }}</td>
+            <td><span class="badge bg-light text-dark border">{{ payment.get_method_display }}</span></td>
+            <td class="text-muted small fst-italic">{{ payment.notes|default:"-" }}</td>
+            <td class="text-end pe-4">
+              <a href="{% url 'download_payment_receipt' payment.pk %}" class="btn btn-sm btn-outline-primary rounded-pill py-1 px-3">
+                <i class="bi bi-download me-1"></i> Receipt
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="text-center py-5 text-muted">
+              <i class="bi bi-receipt fs-1 d-block mb-2 opacity-50"></i>
+              No payments recorded yet.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

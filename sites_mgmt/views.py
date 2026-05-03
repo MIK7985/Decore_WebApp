@@ -171,7 +171,36 @@ def client_dashboard(request):
     if getattr(request.user, 'role', '') != 'client':
         return redirect('dashboard')
     sites = request.user.client_sites.all()
+    
+    # If the client only has 1 project, jump straight to the project details
+    if sites.count() == 1:
+        return redirect('client_site_detail', pk=sites.first().pk)
+        
     return render(request, 'sites_mgmt/client_dashboard.html', {'sites': sites})
+
+@login_required
+def client_finance(request):
+    from django.db.models import Sum
+    if getattr(request.user, 'role', '') != 'client':
+        return redirect('dashboard')
+        
+    sites = request.user.client_sites.all()
+    total_estimated = sites.aggregate(total=Sum('estimated_cost'))['total'] or 0
+    total_paid = sum(site.amount_paid for site in sites)
+    total_balance = sum(site.balance_due for site in sites)
+    
+    # Get all payments across all sites, ordered by newest
+    from .models import SitePayment
+    payments = SitePayment.objects.filter(site__in=sites).order_by('-payment_date', '-id')
+    
+    context = {
+        'total_estimated': total_estimated,
+        'total_paid': total_paid,
+        'total_balance': total_balance,
+        'payments': payments,
+        'sites': sites
+    }
+    return render(request, 'sites_mgmt/client_finance.html', context)
 
 @login_required
 def client_site_detail(request, pk):
@@ -272,6 +301,94 @@ def site_delete_payment(request, payment_pk):
         messages.success(request, 'Payment record deleted.')
         return redirect('site_detail', pk=site_pk)
     return redirect('site_detail', pk=site_pk)
+
+@login_required
+def download_payment_receipt(request, payment_pk):
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from django.http import HttpResponse
+    import os
+    from django.conf import settings
+    
+    from .models import SitePayment
+    payment = get_object_or_404(SitePayment, pk=payment_pk)
+    
+    # Check permissions
+    if getattr(request.user, 'role', '') == 'client':
+        if request.user not in [payment.site.client_user]:
+            messages.error(request, 'Permission denied.')
+            return redirect('dashboard')
+    elif not request.user.can_manage:
+        messages.error(request, 'Permission denied.')
+        return redirect('dashboard')
+        
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="Receipt_{payment.site.name.replace(" ", "_")}_{payment.payment_date.strftime("%b_%d_%Y")}.pdf"'
+    
+    doc = SimpleDocTemplate(response, pagesize=letter, topMargin=40)
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Custom Styles
+    title_style = ParagraphStyle(name='TitleStyle', parent=styles['Heading1'], fontSize=24, spaceAfter=10, textColor=colors.HexColor("#0f172a"), alignment=1)
+    subtitle_style = ParagraphStyle(name='SubtitleStyle', parent=styles['Heading2'], fontSize=12, spaceAfter=20, textColor=colors.HexColor("#64748b"), alignment=1)
+    heading_style = ParagraphStyle(name='HeadingStyle', parent=styles['Heading2'], fontSize=14, spaceAfter=10, textColor=colors.HexColor("#0f172a"))
+    normal_style = styles['Normal']
+    
+    # Header Section
+    logo_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'Logo.png')
+    if os.path.exists(logo_path):
+        logo = Image(logo_path, width=80, height=80)
+        elements.append(logo)
+        elements.append(Spacer(1, 10))
+        
+    elements.append(Paragraph("<b>PAYMENT RECEIPT</b>", title_style))
+    elements.append(Paragraph("<b>Decore Developers</b><br/>Thank you for your business.", subtitle_style))
+    elements.append(Spacer(1, 20))
+    
+    # Receipt Info
+    receipt_info = f"<b>Receipt No:</b> REC-{payment.id:04d}<br/>"
+    receipt_info += f"<b>Date of Payment:</b> {payment.payment_date.strftime('%B %d, %Y')}<br/>"
+    receipt_info += f"<b>Project Name:</b> {payment.site.name}<br/>"
+    if payment.site.client_user:
+        receipt_info += f"<b>Client Name:</b> {payment.site.client_user.get_full_name() or payment.site.client_user.username}<br/>"
+    elements.append(Paragraph(receipt_info, normal_style))
+    elements.append(Spacer(1, 20))
+    
+    # Payment Details Table
+    data = [
+        ['Description', 'Details'],
+        ['Payment Method', payment.get_method_display()],
+        ['Reference / Notes', payment.notes if payment.notes else 'N/A'],
+        ['Amount Paid', f"Rs. {payment.amount:,.2f}"]
+    ]
+    
+    t = Table(data, colWidths=[200, 250])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (1,0), colors.HexColor("#0f172a")),
+        ('TEXTCOLOR', (0,0), (1,0), colors.whitesmoke),
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0,0), (-1,0), 12),
+        ('BACKGROUND', (0,1), (-1,-1), colors.HexColor("#f8fafc")),
+        ('GRID', (0,0), (-1,-1), 1, colors.HexColor("#e2e8f0")),
+        ('FONTNAME', (0,-1), (1,-1), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (1,-1), (1,-1), colors.HexColor("#16a34a")), # Green color for amount
+        ('FONTSIZE', (1,-1), (1,-1), 14),
+    ]))
+    elements.append(t)
+    
+    elements.append(Spacer(1, 40))
+    
+    # Footer Section
+    footer_text = "<i>This is a computer-generated receipt and does not require a physical signature.</i><br/>"
+    footer_text += "If you have any questions about this receipt, please contact <b>Decore Developers</b>."
+    elements.append(Paragraph(footer_text, ParagraphStyle(name='Footer', parent=styles['Normal'], alignment=1, textColor=colors.gray, fontSize=9)))
+    
+    doc.build(elements)
+    return response
 
 @login_required
 def download_site_materials_pdf(request, pk):

@@ -20,8 +20,11 @@ def admin_or_office_staff_required(view_func):
             return redirect('login')
         if not (request.user.role in ['admin', 'office_staff'] or request.user.is_superuser):
             messages.error(request, 'Insufficient permissions.')
-            # If they are an employee, send them to their profile, otherwise to login
-            if request.user.employee is not None:
+            # If they are a client, send them to their portal
+            if getattr(request.user, 'role', '') == 'client':
+                return redirect('client_dashboard')
+            # If they are an employee, send them to their profile
+            if hasattr(request.user, 'employee') and request.user.employee is not None:
                 return redirect('employee_detail', pk=request.user.employee.pk)
             return redirect('logout')
         return view_func(request, *args, **kwargs)

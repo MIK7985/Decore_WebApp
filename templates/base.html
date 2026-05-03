@@ -438,8 +438,11 @@
   <div class="sidebar-nav">
     {% if user.role == 'client' %}
     <span class="nav-section-title">Client Portal</span>
-    <a href="{% url 'client_dashboard' %}" class="sidebar-link {% if 'client' in request.resolver_match.url_name %}active{% endif %}">
+    <a href="{% url 'client_dashboard' %}" class="sidebar-link {% if 'client_dashboard' in request.resolver_match.url_name or 'client_site' in request.resolver_match.url_name %}active{% endif %}">
       <i class="bi bi-kanban"></i> My Projects
+    </a>
+    <a href="{% url 'client_finance' %}" class="sidebar-link {% if 'client_finance' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-wallet2"></i> My Finances
     </a>
     {% elif user.can_manage %}
     <span class="nav-section-title">Main</span>
@@ -610,11 +613,11 @@
 <!-- Mobile Bottom Navigation -->
 <nav class="bottom-nav d-lg-none">
   {% if user.role == 'client' %}
-  <a href="{% url 'client_dashboard' %}" class="bottom-nav-item {% if 'client' in request.resolver_match.url_name %}active{% endif %}">
+  <a href="{% url 'client_dashboard' %}" class="bottom-nav-item {% if 'client_dashboard' in request.resolver_match.url_name or 'client_site' in request.resolver_match.url_name %}active{% endif %}">
     <i class="bi bi-kanban"></i><span>Projects</span>
   </a>
-  <a href="#" class="bottom-nav-item" id="bottomMenuToggle">
-    <i class="bi bi-grid"></i><span>Menu</span>
+  <a href="{% url 'client_finance' %}" class="bottom-nav-item {% if 'client_finance' in request.resolver_match.url_name %}active{% endif %}">
+    <i class="bi bi-wallet2"></i><span>Finance</span>
   </a>
   {% elif user.can_manage %}
   <a href="{% url 'dashboard' %}" class="bottom-nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
