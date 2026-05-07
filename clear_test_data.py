@@ -9,7 +9,7 @@ from employees.models import Employee
 from sites_mgmt.models import WorkSite, WorkArea, WorkAreaImage, SitePayment, EmployeeAssignment
 from attendance.models import Attendance
 from salary.models import SalarySummary, AdvanceRequest
-from inventory.models import Material, MaterialStock, DeliveryLog, MaterialRequest
+from inventory.models import Item, StorageStock, SiteStock, DispatchOrder, DispatchItem, MaterialRequest, DeliveryLog, DeliveryLogItem, StorageFacility
 
 User = get_user_model()
 
@@ -36,10 +36,15 @@ def clear_test_data():
     WorkSite.objects.all().delete()
 
     print("Deleting Inventory Data...")
+    DeliveryLogItem.objects.all().delete()
     DeliveryLog.objects.all().delete()
     MaterialRequest.objects.all().delete()
-    MaterialStock.objects.all().delete()
-    Material.objects.all().delete()
+    DispatchItem.objects.all().delete()
+    DispatchOrder.objects.all().delete()
+    SiteStock.objects.all().delete()
+    StorageStock.objects.all().delete()
+    Item.objects.all().delete()
+    StorageFacility.objects.all().delete()
 
     print("Deleting Employees...")
     Employee.objects.all().delete()
