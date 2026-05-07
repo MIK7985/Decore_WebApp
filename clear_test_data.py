@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from employees.models import Employee
 from sites_mgmt.models import WorkSite, WorkArea, WorkAreaImage, SitePayment, EmployeeAssignment
 from attendance.models import Attendance
-from salary.models import SalarySummary, SalaryDetail, AdvanceRequest
+from salary.models import SalarySummary, AdvanceRequest
 from inventory.models import Material, MaterialStock, DeliveryLog, MaterialRequest
 
 User = get_user_model()
@@ -22,7 +22,6 @@ def clear_test_data():
         return
 
     print("Deleting Salary Records...")
-    SalaryDetail.objects.all().delete()
     SalarySummary.objects.all().delete()
     AdvanceRequest.objects.all().delete()
 
