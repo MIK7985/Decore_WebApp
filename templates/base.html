@@ -24,13 +24,30 @@
           canvas.width = window.screen.width * window.devicePixelRatio;
           canvas.height = window.screen.height * window.devicePixelRatio;
           var ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#0f172a';
+          
+          // Solid black background to hide the logo's black edges
+          ctx.fillStyle = '#000000';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
-          var imgWidth = Math.min(canvas.width * 0.5, 400); // Logo width
+          
+          var imgWidth = Math.min(canvas.width * 0.45, 400); // Logo width
           var imgHeight = imgWidth * (img.height / img.width);
           var x = (canvas.width - imgWidth) / 2;
-          var y = (canvas.height - imgHeight) / 2;
+          var y = (canvas.height - imgHeight) / 2.5; // Shifted slightly up
+          
           ctx.drawImage(img, x, y, imgWidth, imgHeight);
+          
+          // Add Brand Text
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold ' + (canvas.width * 0.075) + 'px -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto';
+          ctx.textAlign = 'center';
+          ctx.fillText('Decore Developers', canvas.width / 2, y + imgHeight + canvas.height * 0.08);
+          
+          // Add Subtitle
+          ctx.fillStyle = '#10b981';
+          ctx.font = '600 ' + (canvas.width * 0.035) + 'px -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto';
+          ctx.letterSpacing = '2px';
+          ctx.fillText('POP WORK MANAGEMENT', canvas.width / 2, y + imgHeight + canvas.height * 0.08 + canvas.width * 0.06);
+          
           var link = document.createElement('link');
           link.rel = 'apple-touch-startup-image';
           link.href = canvas.toDataURL('image/png');
