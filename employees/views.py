@@ -32,12 +32,18 @@ def employee_list(request):
     paginator = Paginator(employees, 15)
     employees = paginator.get_page(request.GET.get('page'))
 
+    default_pass_employees = []
+    for emp in employees:
+        if emp.user_account and emp.user_account.check_password('password123'):
+            default_pass_employees.append(emp.name)
+
     return render(request, 'employees/employee_list.html', {
         'employees': employees,
         'query': query,
         'role_filter': role_filter,
         'status_filter': status_filter,
         'role_choices': Employee.ROLE_CHOICES,
+        'default_pass_employees': default_pass_employees,
     })
 
 

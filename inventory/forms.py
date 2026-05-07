@@ -54,7 +54,7 @@ class MaterialRequestForm(forms.ModelForm):
             'site': forms.Select(attrs={'class': 'form-select'}),
             'item': forms.Select(attrs={'class': 'form-select', 'id': 'itemSelect'}),
             'custom_item_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Type item name if not in list', 'id': 'customItemInput'}),
-            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Amount required', 'step': 'any'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Required quantity', 'step': 'any'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'maxlength': '500', 'placeholder': 'Optional: e.g. Urgent, needed tomorrow (Max 500 chars)'}),
         }
 
