@@ -101,9 +101,10 @@ def salary_list(request):
                     summary.daily_wage = emp.daily_wage
                     summary.gross_salary = gross
                     
-                    if advance_total > 0:
-                        summary.deductions += advance_total
-                        
+                    # Calculate linked advances to ensure idempotency
+                    linked_advances_total = sum(a.get_final_amount for a in summary.deducted_advances.all())
+                    
+                    summary.deductions = linked_advances_total + advance_total
                     summary.net_payable = gross - summary.deductions
                     summary.save()
                     

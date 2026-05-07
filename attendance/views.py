@@ -27,6 +27,7 @@ def attendance_list(request):
     month_filter = request.GET.get('month', '')
     site_filter = request.GET.get('site', '')
     emp_filter = request.GET.get('employee', '')
+    status_filter = request.GET.get('status', '')
 
     # Set Defaults based on role if no filter is provided
     if not request.user.can_manage and not month_filter and not date_filter:
@@ -34,26 +35,45 @@ def attendance_list(request):
     elif request.user.can_manage and not date_filter and not month_filter:
         date_filter = str(timezone.now().date())
 
-    if date_filter:
-        records = records.filter(date=date_filter)
-    if month_filter:
-        try:
-            year, month = month_filter.split('-')
-            records = records.filter(date__year=year, date__month=month)
-        except ValueError:
-            pass
-    if site_filter:
-        records = records.filter(site_id=site_filter)
-    if emp_filter:
-        records = records.filter(employee__name__icontains=emp_filter)
+    missing_employees = None
+    if status_filter == 'not_marked' and date_filter:
+        # Find active employees who have no attendance record for the specific date
+        marked_emp_ids = Attendance.objects.filter(date=date_filter).values_list('employee_id', flat=True)
+        missing_query = Employee.objects.filter(status='active').exclude(id__in=marked_emp_ids)
+        if emp_filter:
+            missing_query = missing_query.filter(name__icontains=emp_filter)
+        missing_employees = missing_query
+        
+        paginator = Paginator(missing_employees, 20)
+        missing_page = paginator.get_page(request.GET.get('page'))
+        records = None
+    else:
+        if date_filter:
+            records = records.filter(date=date_filter)
+        if month_filter:
+            try:
+                year, month = month_filter.split('-')
+                records = records.filter(date__year=year, date__month=month)
+            except ValueError:
+                pass
+        if site_filter:
+            records = records.filter(site_id=site_filter)
+        if emp_filter:
+            records = records.filter(employee__name__icontains=emp_filter)
+        if status_filter:
+            records = records.filter(status=status_filter)
 
-    paginator = Paginator(records, 20)
-    records = paginator.get_page(request.GET.get('page'))
+        paginator = Paginator(records, 20)
+        records = paginator.get_page(request.GET.get('page'))
+        missing_page = None
+
     sites = WorkSite.objects.filter(status='active')
 
     return render(request, 'attendance/attendance_list.html', {
-        'records': records, 'date_filter': date_filter, 'month_filter': month_filter,
-        'site_filter': site_filter, 'emp_filter': emp_filter, 'sites': sites,
+        'records': records, 'missing_page': missing_page,
+        'date_filter': date_filter, 'month_filter': month_filter,
+        'site_filter': site_filter, 'emp_filter': emp_filter, 'status_filter': status_filter,
+        'sites': sites,
     })
 
 @login_required
@@ -77,16 +97,29 @@ def download_attendance_pdf(request):
     date_filter = request.GET.get('date', str(timezone.now().date()))
     site_filter = request.GET.get('site', '')
     emp_filter = request.GET.get('employee', '')
+    status_filter = request.GET.get('status', '')
 
-    if date_filter:
-        records = records.filter(date=date_filter)
-    if site_filter:
-        records = records.filter(site_id=site_filter)
-    if emp_filter:
-        records = records.filter(employee__name__icontains=emp_filter)
+    missing_employees = None
+    if status_filter == 'not_marked' and date_filter:
+        marked_emp_ids = Attendance.objects.filter(date=date_filter).values_list('employee_id', flat=True)
+        missing_query = Employee.objects.filter(status='active').exclude(id__in=marked_emp_ids)
+        if emp_filter:
+            missing_query = missing_query.filter(name__icontains=emp_filter)
+        missing_employees = missing_query
+        records = None
+    else:
+        if date_filter:
+            records = records.filter(date=date_filter)
+        if site_filter:
+            records = records.filter(site_id=site_filter)
+        if emp_filter:
+            records = records.filter(employee__name__icontains=emp_filter)
+        if status_filter:
+            records = records.filter(status=status_filter)
         
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="attendance_report_{date_filter}.pdf"'
+    report_type = "Not Marked " if status_filter == 'not_marked' else ""
+    response['Content-Disposition'] = f'attachment; filename="{report_type.strip()}_attendance_{date_filter}.pdf"'
     
     doc = SimpleDocTemplate(response, pagesize=portrait(letter))
     elements = []
@@ -98,7 +131,7 @@ def download_attendance_pdf(request):
         logo_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'Logo-removebg-preview (1).png')
         
     header_data = []
-    title_html = f"<font size=22 color='#0f172a'><b>Decore Developers</b></font><br/><br/><font size=12 color='#64748b'><b>DAILY ATTENDANCE REPORT</b> &nbsp;&nbsp;|&nbsp;&nbsp; {date_filter}</font>"
+    title_html = f"<font size=22 color='#0f172a'><b>Decore Developers</b></font><br/><br/><font size=12 color='#64748b'><b>{report_type}DAILY ATTENDANCE REPORT</b> &nbsp;&nbsp;|&nbsp;&nbsp; {date_filter}</font>"
     title_p = Paragraph(title_html, styles['Normal'])
     
     if os.path.exists(logo_path):
@@ -118,26 +151,40 @@ def download_attendance_pdf(request):
     elements.append(Spacer(1, 15))
     
     # Table Data
-    data = [['Employee Name', 'Worksite', 'Status']]
-    for r in records:
-        site_name = r.site.name if r.site else 'N/A'
-        
-        status_text = r.get_status_display()
-        if r.status == 'present':
-            status_cell = Paragraph(f"<font color='#10b981'><b>{status_text}</b></font>", styles['Normal'])
-        elif r.status == 'absent':
-            status_cell = Paragraph(f"<font color='#ef4444'><b>{status_text}</b></font>", styles['Normal'])
-        elif r.status == 'half_day':
-            status_cell = Paragraph(f"<font color='#f59e0b'><b>{status_text}</b></font>", styles['Normal'])
-        else:
-            status_cell = Paragraph(f"<font color='#64748b'><b>{status_text}</b></font>", styles['Normal'])
+    if missing_employees is not None:
+        data = [['S.No', 'Employee', 'Role', 'Status']]
+        for idx, emp in enumerate(missing_employees, 1):
+            data.append([
+                str(idx),
+                emp.name,
+                emp.get_role_display(),
+                'NOT MARKED'
+            ])
             
-        data.append([r.employee.name, site_name, status_cell])
-        
+        col_widths = [40, 200, 150, 100]
+    else:
+        data = [['Employee Name', 'Worksite', 'Status']]
+        for r in records:
+            site_name = r.site.name if r.site else 'N/A'
+            
+            status_text = r.get_status_display()
+            if r.status == 'present':
+                status_cell = Paragraph(f"<font color='#10b981'><b>{status_text}</b></font>", styles['Normal'])
+            elif r.status == 'absent':
+                status_cell = Paragraph(f"<font color='#ef4444'><b>{status_text}</b></font>", styles['Normal'])
+            elif r.status == 'half_day':
+                status_cell = Paragraph(f"<font color='#f59e0b'><b>{status_text}</b></font>", styles['Normal'])
+            else:
+                status_cell = Paragraph(f"<font color='#64748b'><b>{status_text}</b></font>", styles['Normal'])
+                
+            data.append([r.employee.name, site_name, status_cell])
+            
+        col_widths = [200, 160, 100]
+
     if len(data) == 1:
-        data.append(['No attendance records found.', '', ''])
+        data.append(['No records found.', '', ''])
         
-    table = Table(data, colWidths=[200, 160, 100])
+    table = Table(data, colWidths=col_widths)
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#0f172a")),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor("#ffffff")),

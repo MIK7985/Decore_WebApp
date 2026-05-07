@@ -94,8 +94,10 @@ def dashboard(request):
     total_employees = Employee.objects.filter(status='active').count()
     active_sites = WorkSite.objects.filter(status='active').count()
 
+    from django.db.models import Sum, Q
     monthly_salary = SalarySummary.objects.filter(
-        month=current_month, year=current_year
+        Q(month=current_month, year=current_year) | 
+        Q(end_date__month=current_month, end_date__year=current_year)
     ).aggregate(total=Sum('net_payable'))['total'] or 0
 
     pending_payments = Payment.objects.filter(

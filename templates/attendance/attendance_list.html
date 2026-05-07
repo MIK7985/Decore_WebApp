@@ -5,7 +5,7 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
   <div><h5 class="mb-0 fw-700">Attendance</h5><small class="text-muted">Daily work records</small></div>
   <div class="d-flex gap-2">
-    <a href="{% url 'download_attendance_pdf' %}?date={{ date_filter }}&month={{ month_filter }}&site={{ site_filter }}&employee={{ emp_filter }}" class="btn btn-outline-danger fw-600" download><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+    <a href="{% url 'download_attendance_pdf' %}?date={{ date_filter }}&month={{ month_filter }}&site={{ site_filter }}&employee={{ emp_filter }}&status={{ status_filter }}" class="btn btn-outline-danger fw-600" download><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
     {% if not user.is_accountant %}
     <a href="{% url 'mark_attendance' %}" class="btn btn-primary"><i class="bi bi-pencil-square me-1"></i>Mark Attendance</a>
     {% endif %}
@@ -38,7 +38,19 @@
         </select>
       </div>
       {% if user.can_manage %}
-      <div class="col-8 col-md-3">
+      <div class="col-6 col-md-3">
+        <label class="form-label form-label-sm mb-1 fw-500 small text-muted">
+          <i class="bi bi-funnel me-1"></i>Status
+        </label>
+        <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">All</option>
+          <option value="present" {% if status_filter == 'present' %}selected{% endif %}>Present</option>
+          <option value="absent" {% if status_filter == 'absent' %}selected{% endif %}>Absent</option>
+          <option value="half_day" {% if status_filter == 'half_day' %}selected{% endif %}>Half Day</option>
+          <option value="not_marked" {% if status_filter == 'not_marked' %}selected{% endif %}>Not Marked</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-3">
         <label class="form-label form-label-sm mb-1 fw-500 small text-muted">
           <i class="bi bi-person me-1"></i>Employee
         </label>
@@ -58,63 +70,100 @@
     <div class="table-responsive">
       <table class="table table-hover mb-0 align-middle">
         <thead class="table-light">
+          {% if missing_page %}
+          <tr><th>Employee</th><th>Role</th><th>Status</th></tr>
+          {% else %}
           <tr><th>Date</th>{% if user.can_manage %}<th>Employee</th>{% endif %}<th>Status</th><th class="d-none d-md-table-cell">Site</th>{% if user.can_manage %}<th>Actions</th>{% endif %}</tr>
+          {% endif %}
         </thead>
         <tbody>
-          {% for r in records %}
-          <tr>
-            <td class="small fw-500">{{ r.date }}<div class="text-muted" style="font-size:0.7rem;">{{ r.created_at|time:"h:i A" }}</div></td>
-            {% if user.can_manage %}
-            <td>
-              <div class="d-flex align-items-center">
-                {% if r.employee.profile_pic %}
-                <img src="{{ r.employee.profile_pic.url }}" alt="{{ r.employee.name }}" class="rounded-circle object-fit-cover me-3 shadow-sm" style="width: 42px; height: 42px;">
-                {% else %}
-                <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold me-3 shadow-sm" style="width: 42px; height: 42px; font-size: 1.1rem;">
-                  {{ r.employee.name|first|upper }}
+          {% if missing_page %}
+            {% for emp in missing_page %}
+            <tr>
+              <td>
+                <div class="d-flex align-items-center">
+                  {% if emp.profile_pic %}
+                  <img src="{{ emp.profile_pic.url }}" alt="{{ emp.name }}" class="rounded-circle object-fit-cover me-3 shadow-sm" style="width: 42px; height: 42px;">
+                  {% else %}
+                  <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold me-3 shadow-sm" style="width: 42px; height: 42px; font-size: 1.1rem;">
+                    {{ emp.name|first|upper }}
+                  </div>
+                  {% endif %}
+                  <div>
+                    <a href="{% url 'employee_detail' emp.pk %}" class="text-decoration-none fw-700 text-dark d-block mb-1" style="line-height: 1;">{{ emp.name }}</a>
+                  </div>
                 </div>
-                {% endif %}
-                <div>
-                  <a href="{% url 'employee_detail' r.employee.pk %}" class="text-decoration-none fw-700 text-dark d-block mb-1" style="line-height: 1;">{{ r.employee.name }}</a>
-                  <span class="text-muted fw-600" style="font-size: 0.75rem;">{{ r.employee.get_role_display }}</span>
+              </td>
+              <td><span class="text-muted fw-600" style="font-size: 0.85rem;">{{ emp.get_role_display }}</span></td>
+              <td><span class="badge bg-danger rounded-pill">Not Marked</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center py-5 text-muted"><i class="bi bi-check-circle d-block fs-1 mb-2 text-success"></i>All employees are marked for this date.</td></tr>
+            {% endfor %}
+          {% else %}
+            {% for r in records %}
+            <tr>
+              <td class="small fw-500">{{ r.date }}<div class="text-muted" style="font-size:0.7rem;">{{ r.created_at|time:"h:i A" }}</div></td>
+              {% if user.can_manage %}
+              <td>
+                <div class="d-flex align-items-center">
+                  {% if r.employee.profile_pic %}
+                  <img src="{{ r.employee.profile_pic.url }}" alt="{{ r.employee.name }}" class="rounded-circle object-fit-cover me-3 shadow-sm" style="width: 42px; height: 42px;">
+                  {% else %}
+                  <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold me-3 shadow-sm" style="width: 42px; height: 42px; font-size: 1.1rem;">
+                    {{ r.employee.name|first|upper }}
+                  </div>
+                  {% endif %}
+                  <div>
+                    <a href="{% url 'employee_detail' r.employee.pk %}" class="text-decoration-none fw-700 text-dark d-block mb-1" style="line-height: 1;">{{ r.employee.name }}</a>
+                    <span class="text-muted fw-600" style="font-size: 0.75rem;">{{ r.employee.get_role_display }}</span>
+                  </div>
                 </div>
-              </div>
-            </td>
-            {% endif %}
-            <td>
-              {% if r.status == 'present' %}<span class="badge badge-present rounded-pill">Present</span>
-              {% elif r.status == 'absent' %}<span class="badge badge-absent rounded-pill">Absent</span>
-              {% elif r.status == 'half_day' %}<span class="badge badge-half_day rounded-pill">Half Day</span>
-              {% else %}<span class="badge bg-light text-dark">{{ r.get_status_display }}</span>{% endif %}
-            </td>
-            <td class="text-muted small d-none d-md-table-cell">{{ r.site.name|default:"—" }}</td>
-            {% if user.can_manage %}
-            <td>
-              {% if user.is_admin %}
-              <div class="d-flex gap-1">
-                <a href="{% url 'attendance_edit' r.pk %}" class="btn btn-sm btn-light"><i class="bi bi-pencil"></i></a>
-                <a href="{% url 'attendance_delete' r.pk %}" class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></a>
-              </div>
-              {% else %}
-              <span class="text-muted small">—</span>
+              </td>
               {% endif %}
-            </td>
-            {% endif %}
-          </tr>
-          {% empty %}
-          <tr><td colspan="7" class="text-center py-4 text-muted">No attendance records found for this filter.</td></tr>
-          {% endfor %}
+              <td>
+                {% if r.status == 'present' %}<span class="badge badge-present rounded-pill">Present</span>
+                {% elif r.status == 'absent' %}<span class="badge badge-absent rounded-pill">Absent</span>
+                {% elif r.status == 'half_day' %}<span class="badge badge-half_day rounded-pill">Half Day</span>
+                {% else %}<span class="badge bg-light text-dark">{{ r.get_status_display }}</span>{% endif %}
+              </td>
+              <td class="text-muted small d-none d-md-table-cell">{{ r.site.name|default:"—" }}</td>
+              {% if user.can_manage %}
+              <td>
+                {% if user.is_admin %}
+                <div class="d-flex gap-1">
+                  <a href="{% url 'attendance_edit' r.pk %}" class="btn btn-sm btn-light"><i class="bi bi-pencil"></i></a>
+                  <a href="{% url 'attendance_delete' r.pk %}" class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></a>
+                </div>
+                {% else %}
+                <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+              {% endif %}
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center py-4 text-muted">No attendance records found for this filter.</td></tr>
+            {% endfor %}
+          {% endif %}
         </tbody>
       </table>
     </div>
   </div>
-  {% if records.has_other_pages %}
+  {% if missing_page.has_other_pages or records.has_other_pages %}
   <div class="card-footer bg-white">
-    <nav><ul class="pagination pagination-sm mb-0 justify-content-center">
-      {% if records.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ records.previous_page_number }}&date={{ date_filter }}&month={{ month_filter }}&site={{ site_filter }}&employee={{ emp_filter }}">‹</a></li>{% endif %}
-      <li class="page-item disabled"><a class="page-link">{{ records.number }}/{{ records.paginator.num_pages }}</a></li>
-      {% if records.has_next %}<li class="page-item"><a class="page-link" href="?page={{ records.next_page_number }}&date={{ date_filter }}&month={{ month_filter }}&site={{ site_filter }}&employee={{ emp_filter }}">›</a></li>{% endif %}
-    </ul></nav>
+    <nav>
+      <ul class="pagination pagination-sm mb-0 justify-content-center">
+        {% if missing_page %}
+          {% if missing_page.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ missing_page.previous_page_number }}&date={{ date_filter }}&month={{ month_filter }}&site={{ site_filter }}&employee={{ emp_filter }}&status={{ status_filter }}">‹</a></li>{% endif %}
+          <li class="page-item disabled"><a class="page-link">{{ missing_page.number }}/{{ missing_page.paginator.num_pages }}</a></li>
+          {% if missing_page.has_next %}<li class="page-item"><a class="page-link" href="?page={{ missing_page.next_page_number }}&date={{ date_filter }}&month={{ month_filter }}&site={{ site_filter }}&employee={{ emp_filter }}&status={{ status_filter }}">›</a></li>{% endif %}
+        {% else %}
+          {% if records.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ records.previous_page_number }}&date={{ date_filter }}&month={{ month_filter }}&site={{ site_filter }}&employee={{ emp_filter }}&status={{ status_filter }}">‹</a></li>{% endif %}
+          <li class="page-item disabled"><a class="page-link">{{ records.number }}/{{ records.paginator.num_pages }}</a></li>
+          {% if records.has_next %}<li class="page-item"><a class="page-link" href="?page={{ records.next_page_number }}&date={{ date_filter }}&month={{ month_filter }}&site={{ site_filter }}&employee={{ emp_filter }}&status={{ status_filter }}">›</a></li>{% endif %}
+        {% endif %}
+      </ul>
+    </nav>
   </div>
   {% endif %}
 </div>

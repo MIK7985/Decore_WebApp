@@ -87,6 +87,11 @@ def payment_add(request):
             payment.salary_summary.save()
             
         messages.success(request, f'Payment recorded for {payment.employee.name}.')
+        
+        # If the payment was initiated from the salary management page, redirect back to it
+        if request.GET.get('summary_id'):
+            return redirect('salary_list')
+            
         return redirect('payment_list')
     return render(request, 'payments/payment_form.html', {'form': form, 'title': 'Record Payment'})
 
