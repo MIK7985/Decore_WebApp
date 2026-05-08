@@ -22,6 +22,23 @@
 
 {% block content %}
 <div class="row g-3">
+  {% if requires_password_change %}
+  <div class="col-12">
+    <div class="alert alert-warning border-0 shadow-sm rounded-3 d-flex align-items-center mb-0" role="alert">
+      <i class="bi bi-shield-lock-fill fs-4 text-warning me-3"></i>
+      <div>
+        <h6 class="alert-heading fw-bold mb-1">Security Warning</h6>
+        <p class="mb-0 small">
+          {% if request.user.employee.id == employee.id %}
+          You have not changed your default password (<code>password123</code>). Please log out and update it immediately.
+          {% else %}
+          This employee has never logged in to change their default password (<code>password123</code>).
+          {% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
   {% if employee.status == 'inactive' and not request.user.can_manage %}
   <div class="col-12">
     <div class="alert alert-danger text-center shadow-sm py-5">

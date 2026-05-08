@@ -114,17 +114,27 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-// Pre-fill existing attendance
-const existing = {
+<script type="application/json" id="existing_data">
+{
   {% for emp_id, att in existing.items %}
   "{{ emp_id }}": {
-    status: "{{ att.status }}",
-    siteId: "{{ att.site_id|default_if_none:'' }}"
-  },
+    "status": "{{ att.status }}",
+    "siteId": "{{ att.site_id|default_if_none:'' }}"
+  }{% if not forloop.last %},{% endif %}
   {% endfor %}
-};
+}
+</script>
+<script>
 document.addEventListener('DOMContentLoaded', () => {
+  const existingDataElement = document.getElementById('existing_data');
+  let existing = {};
+  if (existingDataElement) {
+    try {
+      existing = JSON.parse(existingDataElement.textContent);
+    } catch(e) {
+      console.error("Error parsing existing data", e);
+    }
+  }
   const tbody = document.querySelector('table tbody');
   if (!tbody) return;
   const rows = Array.from(tbody.querySelectorAll('tr[id^="row_"]'));
