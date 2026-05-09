@@ -121,42 +121,48 @@
         <hr class="text-muted opacity-25 my-4">
         
         <!-- Comments Section -->
-        <h6 class="fw-600 mb-3 text-muted small text-uppercase d-flex align-items-center"><i class="bi bi-chat-dots me-2"></i>Comments & Feedback</h6>
-        <div class="d-flex flex-column gap-2 mb-3 pe-2" style="max-height: 250px; overflow-y: auto;">
-          {% for comment in area.comments.all %}
-          {% if comment.user.role == 'client' %}
-          <!-- Client's own message (Right side) -->
-          <div class="align-self-end w-75 p-3 rounded-3 shadow-sm text-white" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); border-bottom-right-radius: 0 !important;">
-            <p class="mb-1 small">{{ comment.text }}</p>
-            <div class="text-end opacity-75" style="font-size: 0.65rem;">{{ comment.created_at|date:"M d, h:i A" }}</div>
-          </div>
-          {% else %}
-          <!-- Decore Developers message (Left side) -->
-          <div class="align-self-start w-75 p-3 rounded-3 shadow-sm bg-light border" style="border-bottom-left-radius: 0 !important;">
-            <div class="fw-700 text-dark mb-1" style="font-size: 0.75rem;">
-              {{ comment.user.first_name|default:comment.user.username }} 
-              <span class="text-primary ms-1"><i class="bi bi-patch-check-fill" title="{% if comment.user.is_superuser %}Admin{% else %}{{ comment.user.get_role_display }}{% endif %}"></i></span>
-              <span class="text-muted ms-1 fw-normal" style="font-size: 0.65rem;">({% if comment.user.is_superuser %}Admin{% else %}{{ comment.user.get_role_display }}{% endif %})</span>
-            </div>
-            <p class="mb-1 small text-dark">{{ comment.text }}</p>
-            <div class="text-muted" style="font-size: 0.65rem;">{{ comment.created_at|date:"M d, h:i A" }}</div>
-          </div>
-          {% endif %}
-          {% empty %}
-          <div class="text-center p-4 bg-light rounded-3 border-dashed w-100">
-            <i class="bi bi-chat-square-text text-muted fs-3 mb-2 d-block opacity-50"></i>
-            <small class="text-muted fw-500">Have a question about this area?<br>Send a message to our team!</small>
-          </div>
-          {% endfor %}
-        </div>
+        <button class="btn btn-sm btn-light w-100 d-flex justify-content-between align-items-center fw-600 text-muted text-uppercase" type="button" data-bs-toggle="collapse" data-bs-target="#commentsCollapse{{ area.pk }}" aria-expanded="false" aria-controls="commentsCollapse{{ area.pk }}">
+          <span><i class="bi bi-chat-dots me-2"></i>Comments & Feedback {% if area.comments.count > 0 %}<span class="badge bg-primary ms-1">{{ area.comments.count }}</span>{% endif %}</span>
+          <i class="bi bi-chevron-down"></i>
+        </button>
         
-        <form method="POST" action="{% url 'site_area_comment' area.pk %}">
-          {% csrf_token %}
-          <div class="input-group">
-            <input type="text" name="text" class="form-control" placeholder="Add a comment..." required>
-            <button class="btn btn-primary px-3" type="submit"><i class="bi bi-send"></i></button>
+        <div class="collapse mt-3" id="commentsCollapse{{ area.pk }}">
+          <div class="d-flex flex-column gap-2 mb-3 pe-2" style="max-height: 250px; overflow-y: auto;">
+            {% for comment in area.comments.all %}
+            {% if comment.user.role == 'client' %}
+            <!-- Client's own message (Right side) -->
+            <div class="align-self-end w-75 p-3 rounded-3 shadow-sm text-white" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); border-bottom-right-radius: 0 !important;">
+              <p class="mb-1 small">{{ comment.text }}</p>
+              <div class="text-end opacity-75" style="font-size: 0.65rem;">{{ comment.created_at|date:"M d, h:i A" }}</div>
+            </div>
+            {% else %}
+            <!-- Decore Developers message (Left side) -->
+            <div class="align-self-start w-75 p-3 rounded-3 shadow-sm bg-light border" style="border-bottom-left-radius: 0 !important;">
+              <div class="fw-700 text-dark mb-1" style="font-size: 0.75rem;">
+                {{ comment.user.first_name|default:comment.user.username }} 
+                <span class="text-primary ms-1"><i class="bi bi-patch-check-fill" title="{% if comment.user.is_superuser %}Admin{% else %}{{ comment.user.get_role_display }}{% endif %}"></i></span>
+                <span class="text-muted ms-1 fw-normal" style="font-size: 0.65rem;">({% if comment.user.is_superuser %}Admin{% else %}{{ comment.user.get_role_display }}{% endif %})</span>
+              </div>
+              <p class="mb-1 small text-dark">{{ comment.text }}</p>
+              <div class="text-muted" style="font-size: 0.65rem;">{{ comment.created_at|date:"M d, h:i A" }}</div>
+            </div>
+            {% endif %}
+            {% empty %}
+            <div class="text-center p-4 bg-light rounded-3 border-dashed w-100">
+              <i class="bi bi-chat-square-text text-muted fs-3 mb-2 d-block opacity-50"></i>
+              <small class="text-muted fw-500">Have a question about this area?<br>Send a message to our team!</small>
+            </div>
+            {% endfor %}
           </div>
-        </form>
+          
+          <form method="POST" action="{% url 'site_area_comment' area.pk %}">
+            {% csrf_token %}
+            <div class="input-group">
+              <input type="text" name="text" class="form-control" placeholder="Add a comment..." required>
+              <button class="btn btn-primary px-3" type="submit"><i class="bi bi-send"></i></button>
+            </div>
+          </form>
+        </div>
 
       </div>
     </div>
