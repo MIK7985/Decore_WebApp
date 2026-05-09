@@ -124,6 +124,18 @@ class WorkAreaImage(models.Model):
     def __str__(self):
         return f"Image for {self.work_area.name}"
 
+class WorkAreaComment(models.Model):
+    work_area = models.ForeignKey(WorkArea, on_delete=models.CASCADE, related_name='comments')
+    user = models.ForeignKey('core.CustomUser', on_delete=models.CASCADE, related_name='area_comments')
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Comment by {self.user} on {self.work_area.name}"
+
 class SitePayment(models.Model):
     PAYMENT_METHODS = [
         ('bank_transfer', 'Bank Transfer'),

@@ -206,10 +206,18 @@
                     {% endif %}
                     {% if user.role == 'admin' or user.is_superuser %}
                       {% if area.images.count > 0 %}
-                      <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#viewImagesModal{{ area.pk }}">
+                      <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#viewImagesModal{{ area.pk }}" title="View Photos">
                         <i class="bi bi-images"></i>
                       </button>
                       {% endif %}
+                      <button class="btn btn-sm btn-outline-secondary position-relative" data-bs-toggle="modal" data-bs-target="#viewCommentsModal{{ area.pk }}" title="Comments">
+                        <i class="bi bi-chat-text"></i>
+                        {% if area.comments.count > 0 %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem;">
+                          {{ area.comments.count }}
+                        </span>
+                        {% endif %}
+                      </button>
                       <form method="POST" action="{% url 'site_area_delete' area.pk %}" class="d-inline" onsubmit="return confirm('Are you sure you want to completely delete this work area?');">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Area"><i class="bi bi-trash"></i></button>
@@ -365,6 +373,45 @@
     </div>
     {% endif %}
   {% endif %}
+  
+  <!-- View Comments Modal -->
+  <div class="modal fade" id="viewCommentsModal{{ area.pk }}" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-chat-text text-primary me-2"></i>Comments - {{ area.name }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body bg-light" style="max-height: 400px; overflow-y: auto;">
+          <div class="d-flex flex-column gap-3">
+            {% for comment in area.comments.all %}
+            <div class="p-3 rounded-3 {% if comment.user.role == 'client' %}bg-primary bg-opacity-10{% else %}bg-white shadow-sm{% endif %}">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="fw-600 small {% if comment.user.role == 'client' %}text-primary{% else %}text-dark{% endif %}">
+                  {{ comment.user.first_name|default:comment.user.username }} 
+                  <span class="badge bg-secondary opacity-75 ms-1" style="font-size: 0.6rem;">{{ comment.user.get_role_display }}</span>
+                </span>
+                <small class="text-muted" style="font-size: 0.75rem;">{{ comment.created_at|date:"M d, h:i A" }}</small>
+              </div>
+              <p class="mb-0 small text-dark">{{ comment.text }}</p>
+            </div>
+            {% empty %}
+            <div class="text-center p-4 text-muted small fst-italic">No comments yet.</div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="modal-footer bg-light border-top-0">
+          <form method="POST" action="{% url 'site_area_comment' area.pk %}" class="w-100">
+            {% csrf_token %}
+            <div class="input-group">
+              <input type="text" name="text" class="form-control" placeholder="Reply..." required>
+              <button class="btn btn-primary px-3" type="submit"><i class="bi bi-send"></i></button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endfor %}
 
 <script>

@@ -280,6 +280,35 @@ def site_area_delete(request, area_pk):
     return redirect('site_detail', pk=site_pk)
 
 @login_required
+def site_area_comment(request, area_pk):
+    from .models import WorkArea, WorkAreaComment, EmployeeAssignment
+    area = get_object_or_404(WorkArea, pk=area_pk)
+    
+    # Permission check: Admin, Client of the site, or Assigned Main Worker
+    can_comment = False
+    if request.user.can_manage:
+        can_comment = True
+    elif getattr(request.user, 'role', '') == 'client' and request.user == area.site.client_user:
+        can_comment = True
+    elif request.user.employee is not None and request.user.employee.role == 'main_worker':
+        can_comment = EmployeeAssignment.objects.filter(site=area.site, employee=request.user.employee, is_active=True).exists()
+        
+    if not can_comment:
+        messages.error(request, 'Permission denied.')
+        return redirect('dashboard')
+        
+    if request.method == 'POST':
+        text = request.POST.get('text')
+        if text and text.strip():
+            WorkAreaComment.objects.create(work_area=area, user=request.user, text=text.strip())
+            messages.success(request, 'Comment added successfully.')
+            
+    # Redirect back to where they came from
+    if getattr(request.user, 'role', '') == 'client':
+        return redirect('client_site_detail', pk=area.site.pk)
+    return redirect('site_detail', pk=area.site.pk)
+
+@login_required
 def delete_area_image(request, image_pk):
     from .models import WorkAreaImage
     image = get_object_or_404(WorkAreaImage, pk=image_pk)
