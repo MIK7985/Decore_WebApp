@@ -574,9 +574,11 @@
   <div class="topbar">
     <div class="d-flex align-items-center gap-2">
       {% block back_url %}
+      {% if user.role != 'client' %}
       <button class="btn btn-sm btn-light d-lg-none" id="sidebarToggle">
         <i class="bi bi-list fs-5"></i>
       </button>
+      {% endif %}
       {% endblock %}
     </div>
     <span class="topbar-title">{% block page_title %}Dashboard{% endblock %}</span>

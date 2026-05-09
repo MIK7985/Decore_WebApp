@@ -38,7 +38,7 @@
       {% if user.role == 'admin' or user.is_superuser %}
       <div class="card-footer bg-white d-flex gap-2">
         <a href="{% url 'site_edit' site.pk %}" class="btn btn-primary btn-sm flex-fill"><i class="bi bi-pencil me-1"></i>Edit</a>
-        <a href="{% url 'site_delete' site.pk %}" class="btn btn-outline-warning btn-sm"><i class="bi bi-archive"></i></a>
+        <a href="{% url 'site_delete' site.pk %}" class="btn btn-outline-danger btn-sm" title="Delete Project"><i class="bi bi-trash"></i></a>
       </div>
       {% endif %}
     </div>
@@ -383,20 +383,33 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body bg-light" style="max-height: 400px; overflow-y: auto;">
-          <div class="d-flex flex-column gap-3">
+          <div class="d-flex flex-column gap-2 pe-2">
             {% for comment in area.comments.all %}
-            <div class="p-3 rounded-3 {% if comment.user.role == 'client' %}bg-primary bg-opacity-10{% else %}bg-white shadow-sm{% endif %}">
-              <div class="d-flex justify-content-between align-items-center mb-1">
-                <span class="fw-600 small {% if comment.user.role == 'client' %}text-primary{% else %}text-dark{% endif %}">
-                  {{ comment.user.first_name|default:comment.user.username }} 
-                  <span class="badge bg-secondary opacity-75 ms-1" style="font-size: 0.6rem;">{{ comment.user.get_role_display }}</span>
-                </span>
-                <small class="text-muted" style="font-size: 0.75rem;">{{ comment.created_at|date:"M d, h:i A" }}</small>
+            {% if comment.user.role != 'client' %}
+            <!-- Admin/Worker message (Right side) -->
+            <div class="align-self-end w-75 p-3 rounded-3 shadow-sm text-white" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); border-bottom-right-radius: 0 !important;">
+              <div class="fw-700 mb-1" style="font-size: 0.75rem; color: rgba(255,255,255,0.9);">
+                You <span class="badge bg-white text-primary opacity-75 ms-1" style="font-size: 0.6rem;">{% if comment.user.is_superuser %}Admin{% else %}{{ comment.user.get_role_display }}{% endif %}</span>
               </div>
-              <p class="mb-0 small text-dark">{{ comment.text }}</p>
+              <p class="mb-1 small">{{ comment.text }}</p>
+              <div class="text-end opacity-75" style="font-size: 0.65rem;">{{ comment.created_at|date:"M d, h:i A" }}</div>
             </div>
+            {% else %}
+            <!-- Client message (Left side) -->
+            <div class="align-self-start w-75 p-3 rounded-3 shadow-sm bg-white border" style="border-bottom-left-radius: 0 !important;">
+              <div class="fw-700 text-dark mb-1" style="font-size: 0.75rem;">
+                {{ comment.user.first_name|default:comment.user.username }} 
+                <span class="badge bg-light text-dark border ms-1" style="font-size: 0.6rem;">Client</span>
+              </div>
+              <p class="mb-1 small text-dark">{{ comment.text }}</p>
+              <div class="text-muted" style="font-size: 0.65rem;">{{ comment.created_at|date:"M d, h:i A" }}</div>
+            </div>
+            {% endif %}
             {% empty %}
-            <div class="text-center p-4 text-muted small fst-italic">No comments yet.</div>
+            <div class="text-center p-4 bg-white rounded-3 border-dashed w-100 shadow-sm">
+              <i class="bi bi-chat-dots text-muted fs-3 mb-2 d-block opacity-50"></i>
+              <small class="text-muted fw-500">No comments yet.<br>Start a conversation with the client!</small>
+            </div>
             {% endfor %}
           </div>
         </div>
