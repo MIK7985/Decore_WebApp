@@ -29,9 +29,12 @@ class EmployeeForm(forms.ModelForm):
             # Non-admins cannot set roles to office_staff
             if getattr(self.user, 'role', '') != 'admin' and not getattr(self.user, 'is_superuser', False):
                 if 'role' in self.fields:
-                    filtered_choices = [(k, v) for k, v in Employee.ROLE_CHOICES if k != 'office_staff']
-                    self.fields['role'].choices = filtered_choices
-                    self.fields['role'].widget.choices = filtered_choices
+                    if self.instance and self.instance.pk and self.instance.role == 'office_staff':
+                        self.fields['role'].disabled = True
+                    else:
+                        filtered_choices = [(k, v) for k, v in Employee.ROLE_CHOICES if k != 'office_staff']
+                        self.fields['role'].choices = filtered_choices
+                        self.fields['role'].widget.choices = filtered_choices
 
     class Meta:
         model = Employee

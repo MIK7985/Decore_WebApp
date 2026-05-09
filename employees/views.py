@@ -29,9 +29,6 @@ def employee_list(request):
     if status_filter:
         employees = employees.filter(status=status_filter)
 
-    paginator = Paginator(employees, 15)
-    employees = paginator.get_page(request.GET.get('page'))
-
     return render(request, 'employees/employee_list.html', {
         'employees': employees,
         'query': query,
@@ -151,6 +148,12 @@ def employee_edit(request, pk):
                     current_assignment.is_active = False
                     current_assignment.end_date = timezone.now().date()
                     current_assignment.save()
+                    
+        # Sync the user account role
+        if hasattr(emp, 'user_account') and emp.user_account:
+            if emp.user_account.role != emp.role:
+                emp.user_account.role = emp.role
+                emp.user_account.save()
 
         messages.success(request, f'Profile for "{employee.name}" updated.')
         return redirect('employee_detail', pk=pk)

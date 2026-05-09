@@ -10,6 +10,7 @@ urlpatterns = [
     path('assignment/<int:pk>/remove/', views.remove_assignment, name='remove_assignment'),
     path('<int:site_pk>/areas/add/', views.site_area_add, name='site_area_add'),
     path('areas/<int:area_pk>/update/', views.site_area_update, name='site_area_update'),
+    path('areas/<int:area_pk>/delete/', views.site_area_delete, name='site_area_delete'),
     path('areas/image/<int:image_pk>/delete/', views.delete_area_image, name='delete_area_image'),
     path('<int:site_pk>/payment/add/', views.site_add_payment, name='site_add_payment'),
     path('payment/<int:payment_pk>/delete/', views.site_delete_payment, name='site_delete_payment'),

@@ -245,6 +245,9 @@ def site_area_update(request, area_pk):
         return redirect('dashboard')
         
     if request.method == 'POST':
+        new_name = request.POST.get('name')
+        if new_name:
+            area.name = new_name
         area.status = request.POST.get('status', area.status)
         area.progress_percentage = request.POST.get('progress_percentage', area.progress_percentage)
         area.save()
@@ -257,6 +260,24 @@ def site_area_update(request, area_pk):
             
         messages.success(request, f'Area "{area.name}" updated.')
     return redirect('site_detail', pk=area.site.pk)
+
+@login_required
+def site_area_delete(request, area_pk):
+    from .models import WorkArea
+    area = get_object_or_404(WorkArea, pk=area_pk)
+    
+    # Only admins or office staff can delete areas
+    if not request.user.can_manage:
+        messages.error(request, 'Permission denied. Only admins can delete work areas.')
+        return redirect('dashboard')
+        
+    site_pk = area.site.pk
+    if request.method == 'POST':
+        area_name = area.name
+        area.delete()
+        messages.success(request, f'Work Area "{area_name}" deleted successfully.')
+        
+    return redirect('site_detail', pk=site_pk)
 
 @login_required
 def delete_area_image(request, image_pk):

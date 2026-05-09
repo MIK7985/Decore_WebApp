@@ -210,6 +210,10 @@
                         <i class="bi bi-images"></i>
                       </button>
                       {% endif %}
+                      <form method="POST" action="{% url 'site_area_delete' area.pk %}" class="d-inline" onsubmit="return confirm('Are you sure you want to completely delete this work area?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Area"><i class="bi bi-trash"></i></button>
+                      </form>
                     {% endif %}
                   </div>
                 </td>
@@ -295,6 +299,12 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
+          {% if user.role == 'admin' or user.is_superuser %}
+          <div class="mb-3">
+            <label class="form-label">Area Name</label>
+            <input type="text" name="name" class="form-control" value="{{ area.name }}" required>
+          </div>
+          {% endif %}
           <div class="mb-3">
             <label class="form-label">Status</label>
             <select name="status" class="form-select" onchange="if(this.value === 'completed') { this.form.querySelector('input[name=progress_percentage]').value = 100; }">
