@@ -1,17 +1,21 @@
 {% extends 'base.html' %}
-{% block title %}Complete Site{% endblock %}
-{% block page_title %}Mark Site as Completed{% endblock %}
+{% block title %}Delete Site{% endblock %}
+{% block page_title %}Permanently Delete Site{% endblock %}
 {% block content %}
 <div class="row justify-content-center"><div class="col-md-6">
-<div class="card border-warning">
-  <div class="card-header bg-warning text-dark"><i class="bi bi-archive me-2"></i>Confirm Completion</div>
+<div class="card border-danger shadow-sm">
+  <div class="card-header bg-danger text-white fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Deletion</div>
   <div class="card-body">
-    <p>Mark <strong>{{ site.name }}</strong> as <em>Completed</em>?</p>
+    <h5 class="text-danger fw-bold">Warning: This cannot be undone!</h5>
+    <p>Are you absolutely sure you want to permanently delete the work site <strong>"{{ site.name }}"</strong>?</p>
+    <p class="small text-muted"><i class="bi bi-info-circle me-1"></i>If you delete this site, all its Work Areas, Client Accounts, Material Requests, and Payment Records will also be permanently deleted.</p>
+    <p class="small text-muted mb-4">If you just want to mark the site as finished, click Cancel, go to Edit Site, and change its Status to "Completed".</p>
     <form method="post" class="d-flex gap-2">{% csrf_token %}
-      <button type="submit" class="btn btn-warning">Yes, Complete</button>
-      <a href="{% url 'site_detail' site.pk %}" class="btn btn-light">Cancel</a>
+      <button type="submit" class="btn btn-danger fw-600"><i class="bi bi-trash me-2"></i>Yes, Delete Permanently</button>
+      <a href="{% url 'site_list' %}" class="btn btn-light fw-600 border">Cancel</a>
     </form>
   </div>
 </div>
+</div></div>
 </div></div>
 {% endblock %}

@@ -123,9 +123,10 @@ def site_edit(request, pk):
 def site_delete(request, pk):
     site = get_object_or_404(WorkSite, pk=pk)
     if request.method == 'POST':
-        site.status = 'completed'
-        site.save()
-        messages.success(request, f'Site "{site.name}" marked as completed.')
+        # Hard delete
+        site_name = site.name
+        site.delete()
+        messages.success(request, f'Work Site "{site_name}" has been permanently deleted.')
         return redirect('site_list')
     return render(request, 'sites_mgmt/site_confirm_delete.html', {'site': site})
 
